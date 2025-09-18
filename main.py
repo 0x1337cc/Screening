@@ -113,7 +113,7 @@ st.markdown(professional_css, unsafe_allow_html=True)
 def load_and_preprocess_data():
     """Carga y preprocesa los datos con caché persistente"""
     try:
-        df = pd.read_csv('screenerstocks20250918.csv')
+        df = pd.read_csv("screener-stocks-2025-09-18.csv")
         
         # Convertir columnas de porcentaje de string a float si es necesario
         for col in df.columns:
