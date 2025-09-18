@@ -16,93 +16,110 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS Profesional Minimalista
+# CSS Profesional Minimalista y Estético (Versión Simplificada)
 professional_css = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
+    /* --- Paleta de Colores --- */
+    :root {
+        --primary-color: #4a9eff;
+        --primary-hover: #3a8eef;
+        --bg-color: #0e1117;
+        --content-bg: #1c1f26;
+        --border-color: #2e3139;
+        --text-color: #c9d1d9;
+        --header-color: #f0f6fc;
+    }
+
+    /* --- Estilos Generales --- */
     .stApp {
-        background-color: #0e1117;
+        background-color: var(--bg-color);
         font-family: 'Inter', sans-serif;
+        color: var(--text-color);
+    }
+    
+    h1, h2, h3, h4, h5 {
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        color: var(--header-color);
     }
     
     section[data-testid="stSidebar"] {
-        background-color: #1c1f26;
-        border-right: 1px solid #2e3139;
-        width: 320px;
+        background-color: var(--content-bg);
+        border-right: 1px solid var(--border-color);
     }
     
-    h1, h2, h3 {
-        font-family: 'Inter', sans-serif;
-        font-weight: 600;
-    }
-    
-    div[data-testid="metric-container"] {
-        background-color: #1c1f26;
-        border: 1px solid #2e3139;
-        padding: 16px;
+    /* --- Estilos para st.dataframe --- */
+    /* Contenedor principal de la tabla */
+    .stDataFrame {
         border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background-color: var(--content-bg);
     }
     
-    div[data-testid="metric-container"]:hover {
-        border-color: #4a9eff;
+    /* Cabecera de la tabla */
+    .stDataFrame thead th {
+        background-color: #262b36; /* Un poco más oscuro que el contenido */
+        color: var(--header-color);
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-transform: uppercase; /* MAYÚSCULAS para cabeceras */
+        border-bottom: 2px solid var(--primary-color) !important;
     }
     
+    /* Celdas de la tabla */
+    .stDataFrame tbody tr td {
+        background-color: var(--content-bg);
+        color: var(--text-color);
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.2s ease;
+    }
+    
+    /* Efecto Hover en las filas */
+    .stDataFrame tbody tr:hover td {
+        background-color: #262b36; /* Color de la cabecera para resaltar */
+    }
+    
+    /* --- Otros Componentes --- */
+    
+    /* Botones */
     .stButton > button {
-        background-color: #4a9eff;
+        background-color: var(--primary-color);
         color: white;
         border: none;
         padding: 10px 24px;
         border-radius: 6px;
         font-weight: 500;
-        transition: all 0.2s;
+        transition: all 0.2s ease;
     }
     
     .stButton > button:hover {
-        background-color: #3a8eef;
+        background-color: var(--primary-hover);
         transform: translateY(-1px);
     }
     
+    /* Pestañas (Tabs) */
     .stTabs [data-baseweb="tab"] {
-        padding: 8px 16px;
+        padding: 10px 18px;
         font-weight: 500;
     }
     
     .stTabs [aria-selected="true"] {
-        background-color: #4a9eff;
+        background-color: var(--primary-color);
     }
     
+    /* Expanders */
     .streamlit-expanderHeader {
-        background-color: #1c1f26;
-        border: 1px solid #2e3139;
+        background-color: var(--content-bg);
+        border: 1px solid var(--border-color);
         border-radius: 6px;
         font-weight: 500;
+        transition: border-color 0.2s ease;
     }
     
     .streamlit-expanderHeader:hover {
-        border-color: #4a9eff;
-    }
-    
-    .filter-container {
-        background-color: #1c1f26;
-        border: 1px solid #2e3139;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    
-    .screener-card {
-        background: linear-gradient(135deg, #1c1f26 0%, #262b36 100%);
-        border: 1px solid #2e3139;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
-        transition: all 0.3s;
-    }
-    
-    .screener-card:hover {
-        border-color: #4a9eff;
-        transform: translateX(5px);
+        border-color: var(--primary-color);
     }
 </style>
 """
