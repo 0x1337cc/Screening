@@ -1101,7 +1101,7 @@ if st.session_state.filters_applied:
     return html_table
 
 
-with tab_results:
+    with tab_results:
         st.markdown(f"### 📊 Resultados del Screener: {selected_screener}")
         
         with st.expander("⚙️ Configurar Vista de Resultados", expanded=False):
