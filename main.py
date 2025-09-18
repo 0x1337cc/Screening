@@ -915,7 +915,7 @@ if st.session_state.filters_applied:
         else:
             st.warning("⚠️ No hay datos para mostrar rankings.")
 
-        with tab_sector:
+    with tab_sector:
         st.markdown("### 🎯 Análisis Sectorial Profundo")
         if not filtered_df.empty and 'Sector' in filtered_df.columns:
             sector_metrics = filtered_df.groupby('Sector').agg({
