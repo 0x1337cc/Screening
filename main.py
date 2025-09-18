@@ -947,7 +947,7 @@ if st.session_state.filters_applied:
         st.metric("Score", f"{avg_master:.0f}/100")
 
 with tab_results:
-        st.markdown(f"### 📊 Resultados del Screener: {selected_screener}")
+    st.markdown(f"### 📊 Resultados del Screener: {selected_screener}")
         
         with st.expander("⚙️ Configurar Vista de Resultados", expanded=False):
             if not filtered_df.empty:
