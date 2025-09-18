@@ -898,26 +898,59 @@ if st.session_state.filters_applied:
             
     with tab_rankings:
         st.markdown("### 🏆 Rankings por Categorías")
+        st.markdown("Mostrando los 10 mejores resultados de tu búsqueda para cada factor clave.")
+        st.markdown("---")
+
         if not filtered_df.empty:
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.markdown("#### 💎 Top Value")
-                if 'Value_Score' in filtered_df.columns:
-                    for _, row in filtered_df.nlargest(10, 'Value_Score').iterrows():
-                        st.markdown(f"**{row['Symbol']}** | Score: {row['Value_Score']:.0f} | P/E: {row.get('PE Ratio', 'N/A'):.1f}")
-                        st.caption(row['Company Name'])
+                render_ranking_card(
+                    title="Top Value", emoji="💎", df=filtered_df,
+                    score_col='Value_Score', metric_col='PE Ratio',
+                    metric_label='P/E', metric_format="{:.1f}"
+                )
             with col2:
-                st.markdown("#### 🚀 Top Growth")
-                if 'Growth_Score' in filtered_df.columns:
-                     for _, row in filtered_df.nlargest(10, 'Growth_Score').iterrows():
-                        st.markdown(f"**{row['Symbol']}** | Score: {row['Growth_Score']:.0f} | Rev Gr: {row.get('Rev. Growth', 'N/A'):.1f}%")
-                        st.caption(row['Company Name'])
+                render_ranking_card(
+                    title="Top Growth", emoji="🚀", df=filtered_df,
+                    score_col='Growth_Score', metric_col='Rev. Growth',
+                    metric_label='Rev Gr', metric_format="{:.1f}%"
+                )
             with col3:
-                st.markdown("#### 🏅 Top Quality")
-                if 'Quality_Score' in filtered_df.columns:
-                    for _, row in filtered_df.nlargest(10, 'Quality_Score').iterrows():
-                        st.markdown(f"**{row['Symbol']}** | Score: {row['Quality_Score']:.0f} | ROE: {row.get('ROE', 'N/A'):.1f}%")
-                        st.caption(row['Company Name'])
+                render_ranking_card(
+                    title="Top Quality", emoji="🏅", df=filtered_df,
+                    score_col='Quality_Score', metric_col='ROE',
+                    metric_label='ROE', metric_format="{:.1f}%"
+                )
+
+            st.markdown("<br>", unsafe_allow_html=True) 
+            
+            col4, col5, col6 = st.columns(3)
+            with col4:
+                render_ranking_card(
+                    title="Top Momentum", emoji="📈", df=filtered_df,
+                    score_col='Momentum_Score', metric_col='Return 1Y',
+                    metric_label='1Y Ret', metric_format="{:.1f}%"
+                )
+            with col5:
+                st.markdown("#### 💰 Top Dividend")
+                dividend_df = filtered_df[filtered_df['Div. Yield'] > 0].nlargest(10, 'Div. Yield')
+                if not dividend_df.empty:
+                    for _, row in dividend_df.iterrows():
+                        yield_val = row['Div. Yield']
+                        payout = row.get('Payout Ratio', float('nan'))
+                        color = "#28a745" if pd.notna(payout) and payout < 70 else "#fd7e14"
+                        payout_display = f"{payout:.1f}%" if pd.notna(payout) else "-"
+                        st.markdown(f"<span style='color: {color}; font-weight: bold;'>{row['Symbol']}</span> | Yield: {yield_val:.2f}%", unsafe_allow_html=True)
+                        st.caption(f"{row['Company Name'][:35]} | Payout: {payout_display}")
+                else:
+                    st.caption("No hay empresas con dividendo en los resultados.")
+
+            with col6:
+                render_ranking_card(
+                    title="Top Financial Health", emoji="🏥", df=filtered_df,
+                    score_col='Financial_Health_Score', metric_col='Current Ratio',
+                    metric_label='Current R.', metric_format="{:.2f}"
+                )
         else:
             st.warning("⚠️ No hay datos para mostrar rankings.")
 
