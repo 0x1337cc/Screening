@@ -426,7 +426,6 @@ else: in_index = []
 st.sidebar.markdown("---")
 if st.sidebar.button("🔍 **APLICAR FILTROS**", type="primary", use_container_width=True):
     st.session_state.filters_applied = True
-
 # =============================================================================
 # ÁREA PRINCIPAL - PESTAÑAS
 # =============================================================================
@@ -789,13 +788,13 @@ if st.session_state.filters_applied:
                         "Selecciona Columnas:", 
                         options=list(df.columns), 
                         default=available_cols,
-                        key="column_selector"
+                        key="column_selector"  # Llave única
                     )
                 with col2:
-                    sort_column = st.selectbox("Ordenar por:", options=selected_columns if selected_columns else ['Symbol'])
-                    sort_order = st.radio("Orden:", ["Descendente", "Ascendente"], horizontal=True)
+                    sort_column = st.selectbox("Ordenar por:", options=selected_columns if selected_columns else ['Symbol'], key="sort_column_selector") # Llave única
+                    sort_order = st.radio("Orden:", ["Descendente", "Ascendente"], horizontal=True, key="sort_order_radio") # Llave única
                 with col3:
-                    n_rows = st.select_slider("Filas a mostrar:", options=[25, 50, 100, 200, 500, 1000], value=100)
+                    n_rows = st.select_slider("Filas a mostrar:", options=[25, 50, 100, 200, 500, 1000], value=100, key="n_rows_slider") # Llave única
             else:
                 st.info("No hay filtros activos para configurar.")
 
@@ -907,150 +906,6 @@ if st.session_state.filters_applied:
             if len(sector_metrics) > 2:
                  fig = px.scatter(
                     sector_metrics, x='P/E Med', y='ROE Med', size='Cap Total', color='Master Score',
-                    text='Sector', title="Mapa de Oportunidades Sectoriales",
-                    color_continuous_scale='RdYlGn', template='plotly_dark',
-                    labels={'P/E Med': 'P/E Mediano (Valoración)', 'ROE Med': 'ROE Mediano (Calidad)'})
-                 fig.update_traces(textposition='top center')
-                 st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("⚠️ No hay datos para el análisis sectorial.")
-    
-    with tab_export:
-        st.markdown("### 💾 Exportar Resultados")
-        if not filtered_df.empty:
-            st.info(f"📊 **{len(filtered_df):,}** acciones filtradas listas para exportar")
-            csv = filtered_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📄 Descargar CSV",
-                data=csv,
-                file_name=f"bquant_screener_{date.today().isoformat()}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-        else:
-            st.warning("⚠️ No hay datos para exportar.")
-            
-    # =============================================================================
-    # MÉTRICAS RESUMEN, RESULTADOS Y RESTO DE TABS
-    # =============================================================================
-    st.markdown("---")
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
-    with col1:
-        st.metric("📊 Acciones", f"{len(filtered_df):,}", f"{(len(filtered_df)/len(df)*100) if len(df) > 0 else 0:.1f}% del total")
-    with col2:
-        total_mcap = filtered_df['Market Cap'].sum() if 'Market Cap' in filtered_df.columns and not filtered_df.empty else 0
-        st.metric("💰 Cap Total", format_number(total_mcap, prefix="$", decimals=1))
-    with col3:
-        median_pe = filtered_df['PE Ratio'].median() if 'PE Ratio' in filtered_df.columns and not filtered_df.empty else 0
-        st.metric("P/E Med", f"{median_pe:.1f}")
-    with col4:
-        avg_yield = filtered_df['Div. Yield'].mean() if 'Div. Yield' in filtered_df.columns and not filtered_df.empty else 0
-        st.metric("Yield", f"{avg_yield:.2f}%")
-    with col5:
-        median_roe = filtered_df['ROE'].median() if 'ROE' in filtered_df.columns and not filtered_df.empty else 0
-        st.metric("ROE Med", f"{median_roe:.1f}%")
-    with col6:
-        avg_master = filtered_df['Master_Score'].mean() if 'Master_Score' in filtered_df.columns and not filtered_df.empty else 0
-        st.metric("Score", f"{avg_master:.0f}/100")
-
-    with tab_results:
-        st.markdown(f"### 📊 Resultados del Screener: {selected_screener}")
-        
-        with st.expander("⚙️ Configurar Vista de Resultados", expanded=False):
-            if not filtered_df.empty:
-                default_cols = ['Symbol', 'Company Name', 'Market Cap', 'Master_Score', 'PE Ratio', 'ROE', 'Rev. Growth', 'Sector']
-                available_cols = [col for col in default_cols if col in filtered_df.columns]
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    selected_columns = st.multiselect("Selecciona Columnas:", options=list(filtered_df.columns), default=available_cols)
-                with col2:
-                    sort_column = st.selectbox("Ordenar por:", options=selected_columns if selected_columns else ['Symbol'])
-                    sort_order = st.radio("Orden:", ["Descendente", "Ascendente"], horizontal=True)
-                with col3:
-                    n_rows = st.select_slider("Filas a mostrar:", options=[25, 50, 100, 200, 500, 1000], value=100)
-            else:
-                st.info("No hay filtros activos para configurar.")
-
-        if not filtered_df.empty:
-            if 'selected_columns' in locals() and selected_columns:
-                display_df = filtered_df[selected_columns].sort_values(
-                    by=sort_column, ascending=(sort_order == "Ascendente")
-                ).head(n_rows)
-                
-                st.dataframe(display_df.style.format(na_rep='-'), use_container_width=True, height=600)
-            else:
-                st.dataframe(filtered_df, use_container_width=True, height=600)
-        else:
-            st.info("No hay resultados para mostrar.")
-
-    with tab_analysis:
-        st.markdown("### 📈 Dashboard de Análisis Visual")
-        if not filtered_df.empty and len(filtered_df) > 1:
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("##### Matriz de Valor vs Calidad")
-                fig = px.scatter(
-                    filtered_df.head(250), x='Value_Score', y='Quality_Score',
-                    size='Market Cap', color='Master_Score', hover_data=['Symbol'],
-                    color_continuous_scale='Viridis', template='plotly_dark'
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            with col2:
-                st.markdown("##### Matriz de Crecimiento vs Momentum")
-                fig = px.scatter(
-                    filtered_df.head(250), x='Growth_Score', y='Momentum_Score',
-                    size='Market Cap', color='Financial_Health_Score', hover_data=['Symbol'],
-                    color_continuous_scale='RdYlGn', template='plotly_dark'
-                )
-                st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("⚠️ No hay suficientes datos para mostrar los gráficos (se necesita más de 1 resultado).")
-            
-    with tab_rankings:
-        st.markdown("### 🏆 Rankings por Categorías")
-        if not filtered_df.empty:
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.markdown("#### 💎 Top Value")
-                if 'Value_Score' in filtered_df.columns:
-                    for _, row in filtered_df.nlargest(10, 'Value_Score').iterrows():
-                        st.markdown(f"**{row['Symbol']}** | Score: {row['Value_Score']:.0f} | P/E: {row.get('PE Ratio', 'N/A'):.1f}")
-                        st.caption(row['Company Name'])
-            with col2:
-                st.markdown("#### 🚀 Top Growth")
-                if 'Growth_Score' in filtered_df.columns:
-                     for _, row in filtered_df.nlargest(10, 'Growth_Score').iterrows():
-                        st.markdown(f"**{row['Symbol']}** | Score: {row['Growth_Score']:.0f} | Rev Gr: {row.get('Rev. Growth', 'N/A'):.1f}%")
-                        st.caption(row['Company Name'])
-            with col3:
-                st.markdown("#### 🏅 Top Quality")
-                if 'Quality_Score' in filtered_df.columns:
-                    for _, row in filtered_df.nlargest(10, 'Quality_Score').iterrows():
-                        st.markdown(f"**{row['Symbol']}** | Score: {row['Quality_Score']:.0f} | ROE: {row.get('ROE', 'N/A'):.1f}%")
-                        st.caption(row['Company Name'])
-        else:
-            st.warning("⚠️ No hay datos para mostrar rankings.")
-
-    with tab_sector:
-        st.markdown("### 🎯 Análisis Sectorial Profundo")
-        if not filtered_df.empty and 'Sector' in filtered_df.columns:
-            sector_metrics = filtered_df.groupby('Sector').agg({
-                'Symbol': 'count', 'Market Cap': 'sum', 'PE Ratio': 'median',
-                'ROE': 'median', 'Rev. Growth': 'median', 'Div. Yield': 'mean', 'Master_Score': 'mean'
-            }).round(2)
-            sector_metrics.columns = ['Acciones', 'Cap Total', 'P/E Med', 'ROE Med', 
-                                     'Crec Med', 'Yield Prom', 'Master Score']
-            st.dataframe(sector_metrics.style.format({
-                'Cap Total': lambda x: format_number(x, prefix="$", decimals=1),
-                'P/E Med': '{:.1f}', 'ROE Med': '{:.1f}%', 'Crec Med': '{:.1f}%',
-                'Yield Prom': '{:.2f}%', 'Master Score': '{:.0f}'
-            }).background_gradient(cmap='RdYlGn', subset=['Master Score', 'ROE Med']), use_container_width=True)
-            
-            sector_data = sector_metrics.reset_index()
-            if len(sector_data) > 2:
-                 fig = px.scatter(
-                    sector_data, x='P/E Med', y='ROE Med', size='Cap Total', color='Master Score',
                     text='Sector', title="Mapa de Oportunidades Sectoriales",
                     color_continuous_scale='RdYlGn', template='plotly_dark',
                     labels={'P/E Med': 'P/E Mediano (Valoración)', 'ROE Med': 'ROE Mediano (Calidad)'})
