@@ -844,17 +844,23 @@ if st.session_state.filters_applied:
             if 'n_rows' in locals():
                 df_to_display = df_to_display.head(n_rows)
             
+            # 1. Identificar columnas que necesitan formato especial
+            money_cols = [col for col in df_to_display.columns if any(keyword in col for keyword in ['Cap', 'Value', 'Revenue', 'Income', 'Debt', 'Cash', 'Assets'])]
+            
+            # 2. Aplicar la función de formato a esas columnas para convertirlas en texto formateado
+            for col in money_cols:
+                df_to_display[col] = df_to_display[col].apply(lambda x: format_number(x, prefix='$'))
+
+            # 3. Configurar el resto de columnas con st.column_config
             column_config = {}
             for col in df_to_display.columns:
-                if 'Score' in col:
-                    column_config[col] = st.column_config.ProgressColumn(col, format="%d", min_value=0, max_value=100)
-                elif any(keyword in col for keyword in ['Yield', 'Margin', 'Growth', 'ROE', 'ROA', 'ROIC', '%']):
-                    column_config[col] = st.column_config.NumberColumn(col, format="%.2f%%")
-                # ----- FIX APPLIED HERE -----
-                elif any(keyword in col for keyword in ['Cap', 'Value', 'Revenue', 'Income', 'Debt', 'Cash', 'Assets']):
-                     column_config[col] = st.column_config.NumberColumn(col, format="$ {:,.0f}")
-                elif pd.api.types.is_float_dtype(df_to_display[col]):
-                    column_config[col] = st.column_config.NumberColumn(col, format="%.2f")
+                if col not in money_cols: # Solo configurar las que no hemos pre-formateado
+                    if 'Score' in col:
+                        column_config[col] = st.column_config.ProgressColumn(col, format="%d", min_value=0, max_value=100)
+                    elif any(keyword in col for keyword in ['Yield', 'Margin', 'Growth', 'ROE', 'ROA', 'ROIC', '%']):
+                        column_config[col] = st.column_config.NumberColumn(col, format="%.2f%%")
+                    elif pd.api.types.is_float_dtype(df_to_display[col]):
+                        column_config[col] = st.column_config.NumberColumn(col, format="%.2f")
 
             st.data_editor(
                 df_to_display,
@@ -925,11 +931,13 @@ if st.session_state.filters_applied:
             sector_metrics.columns = ['Sector', 'Acciones', 'Cap Total', 'P/E Med', 'ROE Med', 
                                      'Crec Med', 'Yield Prom', 'Master Score']
             
+            sector_metrics['Cap Total'] = sector_metrics['Cap Total'].apply(lambda x: format_number(x, prefix='$'))
+
             st.data_editor(
                 sector_metrics,
                 column_config={
                     "Acciones": st.column_config.NumberColumn(format="%d"),
-                    "Cap Total": st.column_config.NumberColumn(format="$ {:,.0f}"),
+                    # "Cap Total" ya no necesita configuración porque es texto formateado
                     "P/E Med": st.column_config.NumberColumn(format="%.1f"),
                     "ROE Med": st.column_config.NumberColumn(format="%.1f%%"),
                     "Crec Med": st.column_config.NumberColumn(format="%.1f%%"),
@@ -941,9 +949,13 @@ if st.session_state.filters_applied:
                 use_container_width=True
             )
             
-            if len(sector_metrics) > 2:
+            # Para el gráfico, necesitamos usar la columna numérica original, no la de texto
+            sector_data_for_plot = filtered_df.groupby('Sector').agg({'Market Cap': 'sum'}).reset_index()
+            sector_metrics_for_plot = pd.merge(sector_metrics, sector_data_for_plot, on='Sector')
+
+            if len(sector_metrics_for_plot) > 2:
                  fig = px.scatter(
-                    sector_metrics, x='P/E Med', y='ROE Med', size='Cap Total', color='Master Score',
+                    sector_metrics_for_plot, x='P/E Med', y='ROE Med', size='Market Cap', color='Master Score',
                     text='Sector', title="Mapa de Oportunidades Sectoriales",
                     color_continuous_scale='RdYlGn', template='plotly_dark',
                     labels={'P/E Med': 'P/E Mediano (Valoración)', 'ROE Med': 'ROE Mediano (Calidad)'})
