@@ -814,6 +814,98 @@ if st.session_state.filters_applied:
     with tab_results:
         st.markdown(f"### 📊 Resultados del Screener: {selected_screener}")
         
+        # Add custom CSS for beautiful table styling
+        st.markdown("""
+        <style>
+        /* Custom table styling */
+        .results-table {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Enhance dataframe appearance */
+        [data-testid="stDataFrame"] {
+            background: linear-gradient(145deg, #1a1f2e 0%, #151922 100%);
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+        
+        /* Style the table headers */
+        [data-testid="stDataFrame"] thead th {
+            background: linear-gradient(90deg, #4a9eff 0%, #3a7dd8 100%) !important;
+            color: white !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            font-size: 0.85rem !important;
+            letter-spacing: 0.5px !important;
+            padding: 12px 8px !important;
+            border: none !important;
+        }
+        
+        /* Zebra striping for rows */
+        [data-testid="stDataFrame"] tbody tr:nth-child(even) {
+            background-color: rgba(74, 158, 255, 0.05) !important;
+        }
+        
+        /* Hover effect */
+        [data-testid="stDataFrame"] tbody tr:hover {
+            background-color: rgba(74, 158, 255, 0.15) !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        /* Cell styling */
+        [data-testid="stDataFrame"] tbody td {
+            padding: 10px 8px !important;
+            border-bottom: 1px solid rgba(74, 158, 255, 0.1) !important;
+        }
+        
+        /* Symbol column - make it bold and colored */
+        [data-testid="stDataFrame"] tbody td:first-child {
+            font-weight: bold !important;
+            color: #4a9eff !important;
+        }
+        
+        /* Score cells with gradient backgrounds */
+        .score-excellent { background: linear-gradient(90deg, rgba(40, 167, 69, 0.2) 0%, transparent 100%); }
+        .score-good { background: linear-gradient(90deg, rgba(255, 193, 7, 0.2) 0%, transparent 100%); }
+        .score-poor { background: linear-gradient(90deg, rgba(220, 53, 69, 0.2) 0%, transparent 100%); }
+        
+        /* Metric badges */
+        .metric-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .metric-positive {
+            background-color: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+        
+        .metric-negative {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.3);
+        }
+        
+        /* Sector pills */
+        .sector-pill {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         with st.expander("⚙️ Configurar Vista de Resultados", expanded=False):
             if not filtered_df.empty:
                 default_cols = ['Symbol', 'Company Name', 'Market Cap', 'Master_Score', 'PE Ratio', 'ROE', 'Rev. Growth', 'Sector']
@@ -834,7 +926,7 @@ if st.session_state.filters_applied:
                     n_rows = st.select_slider("Filas a mostrar:", options=[25, 50, 100, 200, 500, 1000], value=100, key="n_rows_slider")
             else:
                 st.info("No hay filtros activos para configurar.")
-
+    
         if not filtered_df.empty:
             df_to_display = filtered_df.copy()
             if 'selected_columns' in locals() and selected_columns:
@@ -844,35 +936,138 @@ if st.session_state.filters_applied:
             if 'n_rows' in locals():
                 df_to_display = df_to_display.head(n_rows)
             
-            # 1. Identificar columnas que necesitan formato especial
-            money_cols = [col for col in df_to_display.columns if any(keyword in col for keyword in ['Cap', 'Value', 'Revenue', 'Income', 'Debt', 'Cash', 'Assets'])]
+            # Enhanced formatting for specific columns
+            def format_with_color(val, col_name):
+                """Add color formatting to values based on their nature"""
+                if pd.isna(val):
+                    return "-"
+                
+                if 'Growth' in col_name or 'Return' in col_name:
+                    color = "#28a745" if val > 0 else "#dc3545"
+                    return f'<span style="color: {color}; font-weight: 500;">{val:.2f}%</span>'
+                elif 'Score' in col_name:
+                    if val >= 75:
+                        color = "#28a745"
+                    elif val >= 50:
+                        color = "#ffc107"
+                    else:
+                        color = "#dc3545"
+                    return f'<span style="color: {color}; font-weight: bold;">{val:.0f}</span>'
+                else:
+                    return val
             
-            # 2. Aplicar la función de formato a esas columnas para convertirlas en texto formateado
+            # Format money columns
+            money_cols = [col for col in df_to_display.columns if any(keyword in col for keyword in ['Cap', 'Value', 'Revenue', 'Income', 'Debt', 'Cash', 'Assets'])]
             for col in money_cols:
                 df_to_display[col] = df_to_display[col].apply(lambda x: format_number(x, prefix='$'))
-
-            # 3. Configurar el resto de columnas con st.column_config
+            
+            # Enhanced column configuration
             column_config = {}
             for col in df_to_display.columns:
-                if col not in money_cols: # Solo configurar las que no hemos pre-formateado
-                    if 'Score' in col:
-                        column_config[col] = st.column_config.ProgressColumn(col, format="%d", min_value=0, max_value=100)
-                    elif any(keyword in col for keyword in ['Yield', 'Margin', 'Growth', 'ROE', 'ROA', 'ROIC', '%']):
-                        column_config[col] = st.column_config.NumberColumn(col, format="%.2f%%")
-                    elif pd.api.types.is_float_dtype(df_to_display[col]):
-                        column_config[col] = st.column_config.NumberColumn(col, format="%.2f")
-
+                if col == 'Symbol':
+                    column_config[col] = st.column_config.TextColumn(
+                        col,
+                        help="Ticker del activo",
+                        width="small"
+                    )
+                elif col == 'Company Name':
+                    column_config[col] = st.column_config.TextColumn(
+                        col,
+                        help="Nombre de la empresa",
+                        width="large"
+                    )
+                elif 'Score' in col:
+                    column_config[col] = st.column_config.ProgressColumn(
+                        col,
+                        format="%d",
+                        min_value=0,
+                        max_value=100,
+                        help=f"Puntuación de {col.replace('_', ' ')}"
+                    )
+                elif col == 'Sector':
+                    column_config[col] = st.column_config.TextColumn(
+                        col,
+                        help="Sector de la empresa",
+                        width="medium"
+                    )
+                elif any(keyword in col for keyword in ['Yield', 'Margin', 'Growth', 'ROE', 'ROA', 'ROIC', '%']):
+                    column_config[col] = st.column_config.NumberColumn(
+                        col,
+                        format="%.2f%%",
+                        help=f"Porcentaje de {col}"
+                    )
+                elif col not in money_cols and pd.api.types.is_float_dtype(df_to_display[col]):
+                    column_config[col] = st.column_config.NumberColumn(
+                        col,
+                        format="%.2f"
+                    )
+            
+            # Display the enhanced data editor
+            st.markdown('<div class="results-table">', unsafe_allow_html=True)
+            
+            # Add summary cards before the table
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                top_stock = df_to_display.iloc[0] if not df_to_display.empty else None
+                if top_stock is not None:
+                    st.info(f"🥇 **Top Pick:** {top_stock['Symbol']}")
+            with col2:
+                avg_score = df_to_display['Master_Score'].mean() if 'Master_Score' in df_to_display.columns else 0
+                st.success(f"📊 **Avg Score:** {avg_score:.0f}")
+            with col3:
+                median_pe = df_to_display['PE Ratio'].median() if 'PE Ratio' in df_to_display.columns else 0
+                st.warning(f"📈 **Median P/E:** {median_pe:.1f}")
+            with col4:
+                total_results = len(df_to_display)
+                st.error(f"🎯 **Results:** {total_results}")
+            
+            # Main data table with enhanced styling
             st.data_editor(
                 df_to_display,
                 column_config=column_config,
                 use_container_width=True,
                 height=600,
                 hide_index=True,
-                disabled=True
+                disabled=True,
+                key="main_results_table"
             )
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Add download button with custom styling
+            st.markdown("""
+            <style>
+            .stDownloadButton > button {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 20px;
+                font-weight: 600;
+                transition: all 0.3s ease;
+            }
+            .stDownloadButton > button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Export section
+            st.markdown("---")
+            col1, col2, col3 = st.columns([1,2,1])
+            with col2:
+                csv = df_to_display.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="💎 Download Premium Results",
+                    data=csv,
+                    file_name=f"premium_screener_{selected_screener.replace(' ', '_')}_{date.today().isoformat()}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
         else:
             st.info("No hay resultados para mostrar.")
-
+        
     with tab_analysis:
         st.markdown("### 📈 Dashboard de Análisis Visual")
         if not filtered_df.empty and len(filtered_df) > 1:
