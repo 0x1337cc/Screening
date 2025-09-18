@@ -811,7 +811,7 @@ if st.session_state.filters_applied:
         avg_master = filtered_df['Master_Score'].mean() if 'Master_Score' in filtered_df.columns and not filtered_df.empty else 0
         st.metric("Score", f"{avg_master:.0f}/100")
 
-    with tab_results:
+        with tab_results:
         st.markdown(f"### 📊 Resultados del Screener: {selected_screener}")
         
         with st.expander("⚙️ Configurar Vista de Resultados", expanded=False):
@@ -844,7 +844,6 @@ if st.session_state.filters_applied:
             if 'n_rows' in locals():
                 df_to_display = df_to_display.head(n_rows)
             
-            # --- CAMBIO CLAVE: USAR st.data_editor PARA UNA TABLA MODERNA ---
             column_config = {}
             for col in df_to_display.columns:
                 if 'Score' in col:
@@ -916,7 +915,7 @@ if st.session_state.filters_applied:
         else:
             st.warning("⚠️ No hay datos para mostrar rankings.")
 
-    with tab_sector:
+        with tab_sector:
         st.markdown("### 🎯 Análisis Sectorial Profundo")
         if not filtered_df.empty and 'Sector' in filtered_df.columns:
             sector_metrics = filtered_df.groupby('Sector').agg({
@@ -930,7 +929,6 @@ if st.session_state.filters_applied:
                 sector_metrics,
                 column_config={
                     "Acciones": st.column_config.NumberColumn(format="%d"),
-                    # ----- FIX APPLIED HERE -----
                     "Cap Total": st.column_config.NumberColumn(format="$ {:,.0f}"),
                     "P/E Med": st.column_config.NumberColumn(format="%.1f"),
                     "ROE Med": st.column_config.NumberColumn(format="%.1f%%"),
