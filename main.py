@@ -675,7 +675,6 @@ with tab_filters:
     col1, col2, col3 = st.columns([1, 1, 1])
     if col2.button("⚡ **APLICAR TODOS LOS FILTROS**", type="primary", use_container_width=True):
         st.session_state.filters_applied = True
-            
 # =============================================================================
 # APLICACIÓN DE FILTROS
 # =============================================================================
@@ -703,7 +702,6 @@ if st.session_state.filters_applied:
         'FCF Yield': (fcf_yield_min, None), 'Earnings Yield': (earnings_yield_min, None),
         'Graham (%)': (graham_upside_min, None), 'Lynch (%)': (lynch_upside_min, None),
         'P/TBV': (ptbv_min, ptbv_max),
-
         'Rev. Growth': (rev_growth_min, rev_growth_max), 'EPS Growth': (eps_growth_min, eps_growth_max),
         'Rev. Growth 3Y': (rev_growth_3y_min, None), 'EPS Growth 3Y': (eps_growth_3y_min, None),
         'Rev. Growth 5Y': (rev_growth_5y_min, None), 'EPS Growth 5Y': (eps_growth_5y_min, None),
@@ -712,26 +710,22 @@ if st.session_state.filters_applied:
         'Rev Gr. Next Q': (rev_growth_next_q_min, None), 'EPS Gr. Next Q': (eps_growth_next_q_min, None),
         'FCF Growth': (fcf_growth_min, None), 'FCF Growth 3Y': (fcf_growth_3y_min, None),
         'FCF Growth 5Y': (fcf_growth_5y_min, None),
-
         'ROE': (roe_min, None), 'ROA': (roa_min, None), 'ROIC': (roic_min, None), 'ROCE': (roce_min, None),
         'Profit Margin': (profit_margin_min, None), 'Gross Margin': (gross_margin_min, None),
         'Oper. Margin': (operating_margin_min, None), 'FCF Margin': (fcf_margin_min, None),
         'EBITDA Margin': (ebitda_margin_min, None), 'EBIT Margin': (ebit_margin_min, None),
         'ROE (5Y)': (roe_5y_min, None), 'ROA (5Y)': (roa_5y_min, None), 'ROIC (5Y)': (roic_5y_min, None),
         'Asset Turnover': (asset_turnover_min, None), 'R&D / Rev': (rd_rev_min, None),
-
         'Current Ratio': (current_ratio_min, None), 'Quick Ratio': (quick_ratio_min, None),
         'Debt / Equity': (None, debt_equity_max), 'Debt / EBITDA': (None, debt_ebitda_max),
         'Z-Score': (z_score_min, None), 'F-Score': (f_score_min, None),
         'Debt / FCF': (None, debt_fcf_max), 'Int. Cov.': (interest_coverage_min, None),
         'Cash / M.Cap': (cash_mcap_min, None), 'Debt Growth (YoY)': (None, debt_growth_yoy_max),
         'Total Debt': (total_debt_min, None), 'Total Cash': (total_cash_min, None),
-
         'Div. Yield': (div_yield_min, div_yield_max), 'Payout Ratio': (None, payout_ratio_max),
         'Years': (years_min, None), 'Shareh. Yield': (shareholder_yield_min, None),
         'Buyback Yield': (buyback_yield_min, None), 'Div. Growth': (div_growth_1y_min, None),
         'Div. Growth 3Y': (div_growth_3y_min, None), 'Div. Growth 5Y': (div_growth_5y_min, None),
-        
         'RSI': (rsi_min, rsi_max), 'Beta (5Y)': (None, beta_max),
         'Return 1W': (return_1w_min, None), 'Return 1M': (return_1m_min, None),
         'Return 3M': (return_3m_min, None), 'Return YTD': (return_ytd_min, None),
@@ -739,11 +733,9 @@ if st.session_state.filters_applied:
         '52W High': (None, distance_52w_high_max), 'ATH Chg (%)': (None, ath_chg_max),
         '52W Low': (distance_52w_low_min, None), 'ATL Chg (%)': (atl_chg_min, None),
         'Rel. Volume': (rel_volume_min, None), 'ATR': (atr_min, None),
-        
         'Employees': (employees_min, None), 'Analysts': (analysts_min, None),
         'Shares Insiders': (insider_ownership_min, None), 'Shares Institut.': (institutional_ownership_min, None),
         'Short % Float': (None, short_float_max),
-
         'Quality_Score': (quality_score_min if quality_score_min > 0 else None, None),
         'Value_Score': (value_score_min if value_score_min > 0 else None, None),
         'Growth_Score': (growth_score_min if growth_score_min > 0 else None, None),
@@ -754,15 +746,184 @@ if st.session_state.filters_applied:
 
     for col, (min_val, max_val) in filters_to_apply_adv.items():
         if col in filtered_df.columns:
-            if min_val is not None:
-                filtered_df = filtered_df.dropna(subset=[col])[filtered_df[col] >= min_val]
-            if max_val is not None:
-                filtered_df = filtered_df.dropna(subset=[col])[filtered_df[col] <= max_val]
+            if min_val is not None: filtered_df = filtered_df.dropna(subset=[col])[filtered_df[col] >= min_val]
+            if max_val is not None: filtered_df = filtered_df.dropna(subset=[col])[filtered_df[col] <= max_val]
 
     if not filtered_df.empty:
         st.success(f"✅ Filtros aplicados correctamente. Se encontraron {len(filtered_df)} resultados.")
     else:
         st.warning("⚠️ No se encontraron resultados que coincidan con los filtros aplicados. Intenta ser menos restrictivo.")
+
+    st.markdown("---")
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    with col1:
+        st.metric("📊 Acciones", f"{len(filtered_df):,}", f"{(len(filtered_df)/len(df)*100) if len(df) > 0 else 0:.1f}% del total")
+    with col2:
+        total_mcap = filtered_df['Market Cap'].sum() if 'Market Cap' in filtered_df.columns and not filtered_df.empty else 0
+        st.metric("💰 Cap Total", format_number(total_mcap, prefix="$", decimals=1))
+    with col3:
+        median_pe = filtered_df['PE Ratio'].median() if 'PE Ratio' in filtered_df.columns and not filtered_df.empty else 0
+        st.metric("P/E Med", f"{median_pe:.1f}")
+    with col4:
+        avg_yield = filtered_df['Div. Yield'].mean() if 'Div. Yield' in filtered_df.columns and not filtered_df.empty else 0
+        st.metric("Yield", f"{avg_yield:.2f}%")
+    with col5:
+        median_roe = filtered_df['ROE'].median() if 'ROE' in filtered_df.columns and not filtered_df.empty else 0
+        st.metric("ROE Med", f"{median_roe:.1f}%")
+    with col6:
+        avg_master = filtered_df['Master_Score'].mean() if 'Master_Score' in filtered_df.columns and not filtered_df.empty else 0
+        st.metric("Score", f"{avg_master:.0f}/100")
+
+    with tab_results:
+        st.markdown(f"### 📊 Resultados del Screener: {selected_screener}")
+        
+        with st.expander("⚙️ Configurar Vista de Resultados", expanded=False):
+            if not filtered_df.empty:
+                default_cols = ['Symbol', 'Company Name', 'Market Cap', 'Master_Score', 'PE Ratio', 'ROE', 'Rev. Growth', 'Sector']
+                available_cols = [col for col in default_cols if col in filtered_df.columns]
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    selected_columns = st.multiselect("Selecciona Columnas:", options=list(df.columns), default=available_cols)
+                with col2:
+                    sort_column = st.selectbox("Ordenar por:", options=selected_columns if selected_columns else ['Symbol'])
+                    sort_order = st.radio("Orden:", ["Descendente", "Ascendente"], horizontal=True)
+                with col3:
+                    n_rows = st.select_slider("Filas a mostrar:", options=[25, 50, 100, 200, 500, 1000], value=100)
+            else:
+                st.info("No hay filtros activos para configurar.")
+
+        if not filtered_df.empty:
+            df_to_display = filtered_df
+            if 'selected_columns' in locals() and selected_columns:
+                df_to_display = df_to_display[selected_columns]
+            if 'sort_column' in locals():
+                df_to_display = df_to_display.sort_values(by=sort_column, ascending=(sort_order == "Ascendente"))
+            if 'n_rows' in locals():
+                df_to_display = df_to_display.head(n_rows)
+            
+            # Configuración de columnas para st.data_editor
+            column_config = {}
+            for col in df_to_display.columns:
+                if 'Score' in col:
+                    column_config[col] = st.column_config.ProgressColumn(f"{col}", format="%d", min_value=0, max_value=100)
+                elif any(keyword in col for keyword in ['Yield', 'Margin', 'Growth', 'ROE', 'ROA', 'ROIC', '%']):
+                    column_config[col] = st.column_config.NumberColumn(f"{col}", format="%.2f%%")
+                elif any(keyword in col for keyword in ['Cap', 'Value', 'Revenue', 'Income', 'Debt', 'Cash', 'Assets']):
+                     column_config[col] = st.column_config.NumberColumn(f"{col}", format="$%d")
+                elif pd.api.types.is_float_dtype(df_to_display[col]):
+                    column_config[col] = st.column_config.NumberColumn(f"{col}", format="%.2f")
+
+            st.data_editor(
+                df_to_display,
+                column_config=column_config,
+                use_container_width=True,
+                height=600,
+                hide_index=True,
+                disabled=True
+            )
+        else:
+            st.info("No hay resultados para mostrar.")
+
+    with tab_analysis:
+        st.markdown("### 📈 Dashboard de Análisis Visual")
+        if not filtered_df.empty and len(filtered_df) > 1:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("##### Matriz de Valor vs Calidad")
+                fig = px.scatter(
+                    filtered_df.head(250), x='Value_Score', y='Quality_Score',
+                    size='Market Cap', color='Master_Score', hover_data=['Symbol'],
+                    color_continuous_scale='Viridis', template='plotly_dark'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            with col2:
+                st.markdown("##### Matriz de Crecimiento vs Momentum")
+                fig = px.scatter(
+                    filtered_df.head(250), x='Growth_Score', y='Momentum_Score',
+                    size='Market Cap', color='Financial_Health_Score', hover_data=['Symbol'],
+                    color_continuous_scale='RdYlGn', template='plotly_dark'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("⚠️ No hay suficientes datos para mostrar los gráficos (se necesita más de 1 resultado).")
+            
+    with tab_rankings:
+        st.markdown("### 🏆 Rankings por Categorías")
+        if not filtered_df.empty:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown("#### 💎 Top Value")
+                if 'Value_Score' in filtered_df.columns:
+                    for _, row in filtered_df.nlargest(10, 'Value_Score').iterrows():
+                        st.markdown(f"**{row['Symbol']}** | Score: {row['Value_Score']:.0f} | P/E: {row.get('PE Ratio', 'N/A'):.1f}")
+                        st.caption(row['Company Name'])
+            with col2:
+                st.markdown("#### 🚀 Top Growth")
+                if 'Growth_Score' in filtered_df.columns:
+                     for _, row in filtered_df.nlargest(10, 'Growth_Score').iterrows():
+                        st.markdown(f"**{row['Symbol']}** | Score: {row['Growth_Score']:.0f} | Rev Gr: {row.get('Rev. Growth', 'N/A'):.1f}%")
+                        st.caption(row['Company Name'])
+            with col3:
+                st.markdown("#### 🏅 Top Quality")
+                if 'Quality_Score' in filtered_df.columns:
+                    for _, row in filtered_df.nlargest(10, 'Quality_Score').iterrows():
+                        st.markdown(f"**{row['Symbol']}** | Score: {row['Quality_Score']:.0f} | ROE: {row.get('ROE', 'N/A'):.1f}%")
+                        st.caption(row['Company Name'])
+        else:
+            st.warning("⚠️ No hay datos para mostrar rankings.")
+
+    with tab_sector:
+        st.markdown("### 🎯 Análisis Sectorial Profundo")
+        if not filtered_df.empty and 'Sector' in filtered_df.columns:
+            sector_metrics = filtered_df.groupby('Sector').agg({
+                'Symbol': 'count', 'Market Cap': 'sum', 'PE Ratio': 'median',
+                'ROE': 'median', 'Rev. Growth': 'median', 'Div. Yield': 'mean', 'Master_Score': 'mean'
+            }).reset_index()
+            sector_metrics.columns = ['Sector', 'Acciones', 'Cap Total', 'P/E Med', 'ROE Med', 
+                                     'Crec Med', 'Yield Prom', 'Master Score']
+            
+            st.data_editor(
+                sector_metrics,
+                column_config={
+                    "Acciones": st.column_config.NumberColumn(format="%d"),
+                    "Cap Total": st.column_config.NumberColumn(format="$%.2f"),
+                    "P/E Med": st.column_config.NumberColumn(format="%.1f"),
+                    "ROE Med": st.column_config.NumberColumn(format="%.1f%%"),
+                    "Crec Med": st.column_config.NumberColumn(format="%.1f%%"),
+                    "Yield Prom": st.column_config.NumberColumn(format="%.2f%%"),
+                    "Master Score": st.column_config.ProgressColumn(format="%d", min_value=0, max_value=100),
+                },
+                hide_index=True,
+                disabled=True,
+                use_container_width=True
+            )
+            
+            if len(sector_metrics) > 2:
+                 fig = px.scatter(
+                    sector_metrics, x='P/E Med', y='ROE Med', size='Cap Total', color='Master Score',
+                    text='Sector', title="Mapa de Oportunidades Sectoriales",
+                    color_continuous_scale='RdYlGn', template='plotly_dark',
+                    labels={'P/E Med': 'P/E Mediano (Valoración)', 'ROE Med': 'ROE Mediano (Calidad)'})
+                 fig.update_traces(textposition='top center')
+                 st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("⚠️ No hay datos para el análisis sectorial.")
+    
+    with tab_export:
+        st.markdown("### 💾 Exportar Resultados")
+        if not filtered_df.empty:
+            st.info(f"📊 **{len(filtered_df):,}** acciones filtradas listas para exportar")
+            csv = filtered_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📄 Descargar CSV",
+                data=csv,
+                file_name=f"bquant_screener_{date.today().isoformat()}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        else:
+            st.warning("⚠️ No hay datos para exportar.")
 
     # =============================================================================
     # MÉTRICAS RESUMEN, RESULTADOS Y RESTO DE TABS
