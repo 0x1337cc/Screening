@@ -946,7 +946,7 @@ if st.session_state.filters_applied:
         avg_master = filtered_df['Master_Score'].mean() if 'Master_Score' in filtered_df.columns and not filtered_df.empty else 0
         st.metric("Score", f"{avg_master:.0f}/100")
 
-    def create_beautiful_table(df, selected_columns=None, sort_column=None, sort_order="Descendente", n_rows=100):
+def create_beautiful_table(df, selected_columns=None, sort_column=None, sort_order="Descendente", n_rows=100):
     """Create a beautiful HTML table with custom styling"""
     
     df_display = df.copy()
