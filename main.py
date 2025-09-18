@@ -844,6 +844,7 @@ if st.session_state.filters_applied:
             if 'n_rows' in locals():
                 df_to_display = df_to_display.head(n_rows)
             
+            # --- CAMBIO CLAVE: USAR st.data_editor PARA UNA TABLA MODERNA ---
             column_config = {}
             for col in df_to_display.columns:
                 if 'Score' in col:
@@ -851,7 +852,7 @@ if st.session_state.filters_applied:
                 elif any(keyword in col for keyword in ['Yield', 'Margin', 'Growth', 'ROE', 'ROA', 'ROIC', '%']):
                     column_config[col] = st.column_config.NumberColumn(col, format="%.2f%%")
                 elif 'Cap' in col or 'Value' in col or 'Revenue' in col or 'Income' in col or 'Debt' in col or 'Cash' in col or 'Assets' in col:
-                     column_config[col] = st.column_config.NumberColumn(col, format="$ %d")
+                     column_config[col] = st.column_config.NumberColumn(col, format="$ {:,.0f}")
                 elif pd.api.types.is_float_dtype(df_to_display[col]):
                     column_config[col] = st.column_config.NumberColumn(col, format="%.2f")
 
@@ -928,7 +929,7 @@ if st.session_state.filters_applied:
                 sector_metrics,
                 column_config={
                     "Acciones": st.column_config.NumberColumn(format="%d"),
-                    "Cap Total": st.column_config.NumberColumn(format="$%d"),
+                    "Cap Total": st.column_config.NumberColumn(format="$ {:,.0f}"),
                     "P/E Med": st.column_config.NumberColumn(format="%.1f"),
                     "ROE Med": st.column_config.NumberColumn(format="%.1f%%"),
                     "Crec Med": st.column_config.NumberColumn(format="%.1f%%"),
