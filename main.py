@@ -811,7 +811,7 @@ if st.session_state.filters_applied:
         avg_master = filtered_df['Master_Score'].mean() if 'Master_Score' in filtered_df.columns and not filtered_df.empty else 0
         st.metric("Score", f"{avg_master:.0f}/100")
 
-        with tab_results:
+    with tab_results:
         st.markdown(f"### 📊 Resultados del Screener: {selected_screener}")
         
         with st.expander("⚙️ Configurar Vista de Resultados", expanded=False):
