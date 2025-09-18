@@ -675,8 +675,9 @@ with tab_filters:
     col1, col2, col3 = st.columns([1, 1, 1])
     if col2.button("⚡ **APLICAR TODOS LOS FILTROS**", type="primary", use_container_width=True):
         st.session_state.filters_applied = True
- # =============================================================================
-# APLICACIÓN DE FILTROS
+        
+# =============================================================================
+# APLICACIÓN DE FILTROS Y PESTAÑAS DE RESULTADOS
 # =============================================================================
 if st.session_state.filters_applied:
     filtered_df = df.copy()
@@ -784,12 +785,11 @@ if st.session_state.filters_applied:
                 
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    # ----- FIX APPLIED HERE -----
                     selected_columns = st.multiselect(
                         "Selecciona Columnas:", 
                         options=list(df.columns), 
                         default=available_cols,
-                        key="column_selector"  # The unique key that solves the error
+                        key="column_selector"
                     )
                 with col2:
                     sort_column = st.selectbox("Ordenar por:", options=selected_columns if selected_columns else ['Symbol'])
@@ -800,15 +800,14 @@ if st.session_state.filters_applied:
                 st.info("No hay filtros activos para configurar.")
 
         if not filtered_df.empty:
-            df_to_display = filtered_df
+            df_to_display = filtered_df.copy() # Usar una copia para evitar modificar el original
             if 'selected_columns' in locals() and selected_columns:
                 df_to_display = df_to_display[selected_columns]
-            if 'sort_column' in locals():
+            if 'sort_column' in locals() and sort_column in df_to_display.columns:
                 df_to_display = df_to_display.sort_values(by=sort_column, ascending=(sort_order == "Ascendente"))
             if 'n_rows' in locals():
                 df_to_display = df_to_display.head(n_rows)
             
-            # Configuración de columnas para st.data_editor
             column_config = {}
             for col in df_to_display.columns:
                 if 'Score' in col:
@@ -893,7 +892,7 @@ if st.session_state.filters_applied:
                 sector_metrics,
                 column_config={
                     "Acciones": st.column_config.NumberColumn(format="%d"),
-                    "Cap Total": st.column_config.NumberColumn(format="$%.2f"),
+                    "Cap Total": st.column_config.NumberColumn(format="$%d"),
                     "P/E Med": st.column_config.NumberColumn(format="%.1f"),
                     "ROE Med": st.column_config.NumberColumn(format="%.1f%%"),
                     "Crec Med": st.column_config.NumberColumn(format="%.1f%%"),
@@ -930,6 +929,7 @@ if st.session_state.filters_applied:
             )
         else:
             st.warning("⚠️ No hay datos para exportar.")
+            
     # =============================================================================
     # MÉTRICAS RESUMEN, RESULTADOS Y RESTO DE TABS
     # =============================================================================
