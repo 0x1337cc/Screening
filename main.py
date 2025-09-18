@@ -113,7 +113,7 @@ st.markdown(professional_css, unsafe_allow_html=True)
 def load_and_preprocess_data():
     """Carga y preprocesa los datos con caché persistente"""
     try:
-        df = pd.read_csv("screener-stocks-2025-09-18.csv")
+        df = pd.read_csv('screener-stocks-2025-09-18.csv')
         
         # Convertir columnas de porcentaje de string a float si es necesario
         for col in df.columns:
@@ -580,17 +580,17 @@ with st.sidebar.expander("💰 **Métricas de Valoración**", expanded=(filter_m
     col1, col2 = st.columns(2)
     
     with col1:
-        pe_min = st.number_input("P/E Min", value=preset_filters.get('pe_min', 0), min_value=0.0, key="pe_min")
-        pb_min = st.number_input("P/B Min", value=preset_filters.get('pb_min', 0), min_value=0.0, key="pb_min")
-        ps_min = st.number_input("P/S Min", value=preset_filters.get('ps_min', 0), min_value=0.0, key="ps_min")
-        peg_min = st.number_input("PEG Min", value=preset_filters.get('peg_min', 0), min_value=0.0, key="peg_min")
+        pe_min = st.number_input("P/E Min", value=float(preset_filters.get('pe_min', 0.0)), min_value=0.0, key="pe_min")
+        pb_min = st.number_input("P/B Min", value=float(preset_filters.get('pb_min', 0.0)), min_value=0.0, key="pb_min")
+        ps_min = st.number_input("P/S Min", value=float(preset_filters.get('ps_min', 0.0)), min_value=0.0, key="ps_min")
+        peg_min = st.number_input("PEG Min", value=float(preset_filters.get('peg_min', 0.0)), min_value=0.0, key="peg_min")
         ev_ebitda_min = st.number_input("EV/EBITDA Min", value=0.0, min_value=0.0)
         
     with col2:
-        pe_max = st.number_input("P/E Max", value=preset_filters.get('pe_max', 100), min_value=0.0, key="pe_max")
-        pb_max = st.number_input("P/B Max", value=preset_filters.get('pb_max', 10), min_value=0.0, key="pb_max")
-        ps_max = st.number_input("P/S Max", value=preset_filters.get('ps_max', 20), min_value=0.0, key="ps_max")
-        peg_max = st.number_input("PEG Max", value=preset_filters.get('peg_max', 3), min_value=0.0, key="peg_max")
+        pe_max = st.number_input("P/E Max", value=float(preset_filters.get('pe_max', 100.0)), min_value=0.0, key="pe_max")
+        pb_max = st.number_input("P/B Max", value=float(preset_filters.get('pb_max', 10.0)), min_value=0.0, key="pb_max")
+        ps_max = st.number_input("P/S Max", value=float(preset_filters.get('ps_max', 20.0)), min_value=0.0, key="ps_max")
+        peg_max = st.number_input("PEG Max", value=float(preset_filters.get('peg_max', 3.0)), min_value=0.0, key="peg_max")
         ev_ebitda_max = st.number_input("EV/EBITDA Max", value=50.0, min_value=0.0)
     
     # Más métricas de valoración
@@ -604,7 +604,7 @@ with st.sidebar.expander("📈 **Métricas de Crecimiento**", expanded=(filter_m
     st.markdown("**Crecimiento de Ingresos**")
     col1, col2 = st.columns(2)
     with col1:
-        rev_growth_min = st.number_input("Rev Growth Min %", value=preset_filters.get('rev_growth_min', -100))
+        rev_growth_min = st.number_input("Rev Growth Min %", value=float(preset_filters.get('rev_growth_min', -100.0)))
         rev_growth_3y_min = st.number_input("Rev CAGR 3Y Min %", value=-100.0)
         rev_growth_5y_min = st.number_input("Rev CAGR 5Y Min %", value=-100.0)
     with col2:
@@ -615,11 +615,11 @@ with st.sidebar.expander("📈 **Métricas de Crecimiento**", expanded=(filter_m
     st.markdown("**Crecimiento de Beneficios**")
     col1, col2 = st.columns(2)
     with col1:
-        eps_growth_min = st.number_input("EPS Growth Min %", value=preset_filters.get('eps_growth_min', -100))
+        eps_growth_min = st.number_input("EPS Growth Min %", value=float(preset_filters.get('eps_growth_min', -100.0)))
         eps_growth_3y_min = st.number_input("EPS CAGR 3Y Min %", value=-100.0)
         eps_growth_5y_min = st.number_input("EPS CAGR 5Y Min %", value=-100.0)
     with col2:
-        eps_growth_max = st.number_input("EPS Growth Max %", value=preset_filters.get('eps_growth_max', 500))
+        eps_growth_max = st.number_input("EPS Growth Max %", value=float(preset_filters.get('eps_growth_max', 500.0)))
         eps_growth_next_min = st.number_input("EPS Growth Next Y Min %", value=-100.0)
         eps_growth_next_5y_min = st.number_input("EPS Growth Next 5Y Min %", value=-100.0)
     
@@ -633,9 +633,9 @@ with st.sidebar.expander("💎 **Métricas de Rentabilidad**", expanded=(filter_
     
     col1, col2 = st.columns(2)
     with col1:
-        roe_min = st.number_input("ROE Min %", value=preset_filters.get('roe_min', -50))
-        roa_min = st.number_input("ROA Min %", value=preset_filters.get('roa_min', -50))
-        roic_min = st.number_input("ROIC Min %", value=preset_filters.get('roic_min', -50))
+        roe_min = st.number_input("ROE Min %", value=float(preset_filters.get('roe_min', -50.0)))
+        roa_min = st.number_input("ROA Min %", value=float(preset_filters.get('roa_min', -50.0)))
+        roic_min = st.number_input("ROIC Min %", value=float(preset_filters.get('roic_min', -50.0)))
         roce_min = st.number_input("ROCE Min %", value=-50.0)
     
     with col2:
@@ -645,9 +645,9 @@ with st.sidebar.expander("💎 **Métricas de Rentabilidad**", expanded=(filter_
         roce_max = st.number_input("ROCE Max %", value=100.0)
     
     st.markdown("**Márgenes**")
-    gross_margin_min = st.number_input("Margen Bruto Min %", value=preset_filters.get('gross_margin_min', 0))
+    gross_margin_min = st.number_input("Margen Bruto Min %", value=float(preset_filters.get('gross_margin_min', 0.0)))
     operating_margin_min = st.number_input("Margen Operativo Min %", value=-100.0)
-    profit_margin_min = st.number_input("Margen Neto Min %", value=preset_filters.get('profit_margin_min', -100))
+    profit_margin_min = st.number_input("Margen Neto Min %", value=float(preset_filters.get('profit_margin_min', -100.0)))
     fcf_margin_min = st.number_input("FCF Margin Min %", value=-100.0)
     ebitda_margin_min = st.number_input("EBITDA Margin Min %", value=-100.0)
 
@@ -656,16 +656,16 @@ with st.sidebar.expander("💵 **Análisis de Dividendos**", expanded=(filter_mo
     
     col1, col2 = st.columns(2)
     with col1:
-        div_yield_min = st.number_input("Yield Min %", value=preset_filters.get('div_yield_min', 0))
-        div_yield_max = st.number_input("Yield Max %", value=preset_filters.get('div_yield_max', 20))
-        payout_ratio_max = st.number_input("Payout Ratio Max %", value=preset_filters.get('payout_ratio_max', 100))
+        div_yield_min = st.number_input("Yield Min %", value=float(preset_filters.get('div_yield_min', 0.0)))
+        div_yield_max = st.number_input("Yield Max %", value=float(preset_filters.get('div_yield_max', 20.0)))
+        payout_ratio_max = st.number_input("Payout Ratio Max %", value=float(preset_filters.get('payout_ratio_max', 100.0)))
     
     with col2:
-        years_min = st.number_input("Años Dividendos Min", value=preset_filters.get('years_min', 0), min_value=0)
+        years_min = st.number_input("Años Dividendos Min", value=int(preset_filters.get('years_min', 0)), min_value=0)
         div_growth_3y_min = st.number_input("Div Growth 3Y Min %", value=-100.0)
-        div_growth_5y_min = st.number_input("Div Growth 5Y Min %", value=preset_filters.get('div_growth_5y_min', -100))
+        div_growth_5y_min = st.number_input("Div Growth 5Y Min %", value=float(preset_filters.get('div_growth_5y_min', -100.0)))
     
-    fcf_payout_max = st.number_input("FCF Payout Max %", value=preset_filters.get('fcf_payout_ratio_max', 100))
+    fcf_payout_max = st.number_input("FCF Payout Max %", value=float(preset_filters.get('fcf_payout_ratio_max', 100.0)))
     dividend_consistency = st.checkbox("Dividendos Consistentes (sin cortes)", value=False)
 
 # SALUD FINANCIERA
@@ -674,7 +674,7 @@ with st.sidebar.expander("🏥 **Salud Financiera**", expanded=(filter_mode == "
     st.markdown("**Ratios de Liquidez**")
     col1, col2 = st.columns(2)
     with col1:
-        current_ratio_min = st.number_input("Current Ratio Min", value=preset_filters.get('current_ratio_min', 0))
+        current_ratio_min = st.number_input("Current Ratio Min", value=float(preset_filters.get('current_ratio_min', 0.0)))
         quick_ratio_min = st.number_input("Quick Ratio Min", value=0.0)
         cash_ratio_min = st.number_input("Cash Ratio Min", value=0.0)
     
@@ -684,18 +684,18 @@ with st.sidebar.expander("🏥 **Salud Financiera**", expanded=(filter_mode == "
         working_capital_min = st.number_input("Working Cap Min (M)", value=-1000.0)
     
     st.markdown("**Endeudamiento**")
-    debt_equity_max = st.number_input("Deuda/Capital Max", value=preset_filters.get('debt_equity_max', 5))
+    debt_equity_max = st.number_input("Deuda/Capital Max", value=float(preset_filters.get('debt_equity_max', 5.0)))
     debt_ebitda_max = st.number_input("Deuda/EBITDA Max", value=10.0)
     debt_fcf_max = st.number_input("Deuda/FCF Max", value=10.0)
     interest_coverage_min = st.number_input("Cobertura Intereses Min", value=0.0)
     
     st.markdown("**Scores Financieros**")
-    z_score_min = st.number_input("Altman Z-Score Min", value=preset_filters.get('z_score_min', -5))
+    z_score_min = st.number_input("Altman Z-Score Min", value=float(preset_filters.get('z_score_min', -5.0)))
     f_score_min = st.number_input("Piotroski F-Score Min", value=0, min_value=0, max_value=9)
     
     st.markdown("**Free Cash Flow**")
-    fcf_min = st.number_input("FCF Min (M)", value=preset_filters.get('fcf_min', -1000) if 'fcf_min' in preset_filters else -1000.0)
-    fcf_yield_min = st.number_input("FCF Yield Min %", value=preset_filters.get('fcf_yield_min', -20))
+    fcf_min = st.number_input("FCF Min (M)", value=float(preset_filters.get('fcf_min', -1000.0)) if 'fcf_min' in preset_filters else -1000.0)
+    fcf_yield_min = st.number_input("FCF Yield Min %", value=float(preset_filters.get('fcf_yield_min', -20.0)))
     fcf_per_share_min = st.number_input("FCF/Share Min", value=-100.0)
 
 # INDICADORES TÉCNICOS
@@ -704,43 +704,43 @@ with st.sidebar.expander("📉 **Indicadores Técnicos**", expanded=(filter_mode
     st.markdown("**Momentum y Tendencia**")
     col1, col2 = st.columns(2)
     with col1:
-        rsi_min = st.number_input("RSI Min", value=preset_filters.get('rsi_min', 0), min_value=0.0, max_value=100.0)
-        rsi_max = st.number_input("RSI Max", value=preset_filters.get('rsi_max', 100), min_value=0.0, max_value=100.0)
+        rsi_min = st.number_input("RSI Min", value=float(preset_filters.get('rsi_min', 0.0)), min_value=0.0, max_value=100.0)
+        rsi_max = st.number_input("RSI Max", value=float(preset_filters.get('rsi_max', 100.0)), min_value=0.0, max_value=100.0)
         
     with col2:
-        relative_strength_min = st.number_input("Rel Strength Min", value=preset_filters.get('relative_strength_min', 0))
+        relative_strength_min = st.number_input("Rel Strength Min", value=float(preset_filters.get('relative_strength_min', 0.0)))
         distance_52w_high_max = st.number_input("Dist. 52W High Max %", value=100.0)
     
     st.markdown("**Retornos**")
     col1, col2 = st.columns(2)
     with col1:
-        return_1y_min = st.number_input("Return 1Y Min %", value=preset_filters.get('return_1y_min', -100))
+        return_1y_min = st.number_input("Return 1Y Min %", value=float(preset_filters.get('return_1y_min', -100.0)))
         return_6m_min = st.number_input("Return 6M Min %", value=-100.0)
-        return_3m_min = st.number_input("Return 3M Min %", value=preset_filters.get('return_3m_min', -100))
+        return_3m_min = st.number_input("Return 3M Min %", value=float(preset_filters.get('return_3m_min', -100.0)))
     
     with col2:
-        return_1m_min = st.number_input("Return 1M Min %", value=preset_filters.get('return_1m_min', -100))
+        return_1m_min = st.number_input("Return 1M Min %", value=float(preset_filters.get('return_1m_min', -100.0)))
         return_1w_min = st.number_input("Return 1W Min %", value=-100.0)
         return_ytd_min = st.number_input("Return YTD Min %", value=-100.0)
     
     st.markdown("**Volatilidad y Riesgo**")
     beta_min = st.number_input("Beta Min", value=0.0, min_value=0.0)
-    beta_max = st.number_input("Beta Max", value=preset_filters.get('beta_max', 3), min_value=0.0)
+    beta_max = st.number_input("Beta Max", value=float(preset_filters.get('beta_max', 3.0)), min_value=0.0)
     atr_max = st.number_input("ATR Max", value=1000.0)
     
     st.markdown("**Volumen**")
-    volume_avg_min = st.number_input("Vol Promedio Min", value=preset_filters.get('volume_avg_min', 0))
-    volume_ratio_min = st.number_input("Vol/Avg Min", value=preset_filters.get('volume_ratio_min', 0))
+    volume_avg_min = st.number_input("Vol Promedio Min", value=float(preset_filters.get('volume_avg_min', 0.0)))
+    volume_ratio_min = st.number_input("Vol/Avg Min", value=float(preset_filters.get('volume_ratio_min', 0.0)))
     dollar_volume_min = st.number_input("Dollar Volume Min (M)", value=0.0)
 
 # PROPIEDAD Y GESTIÓN
 with st.sidebar.expander("👥 **Propiedad y Gestión**", expanded=(filter_mode == "⚙️ Experto")):
     
-    insider_ownership_min = st.number_input("Insider Ownership Min %", value=preset_filters.get('insider_ownership_min', 0))
+    insider_ownership_min = st.number_input("Insider Ownership Min %", value=float(preset_filters.get('insider_ownership_min', 0.0)))
     insider_ownership_max = st.number_input("Insider Ownership Max %", value=100.0)
     
-    institutional_ownership_min = st.number_input("Inst. Ownership Min %", value=preset_filters.get('institutional_ownership_min', 0))
-    institutional_ownership_max = st.number_input("Inst. Ownership Max %", value=preset_filters.get('institutional_ownership_max', 100))
+    institutional_ownership_min = st.number_input("Inst. Ownership Min %", value=float(preset_filters.get('institutional_ownership_min', 0.0)))
+    institutional_ownership_max = st.number_input("Inst. Ownership Max %", value=float(preset_filters.get('institutional_ownership_max', 100.0)))
     
     shares_float_min = st.number_input("Float Min (M)", value=0.0)
     shares_float_max = st.number_input("Float Max (M)", value=100000.0)
@@ -757,17 +757,17 @@ with st.sidebar.expander("🎯 **Scores Compuestos**", expanded=True):
     st.markdown("**Scores Algorítmicos (0-100)**")
     
     quality_score_min = st.slider("Quality Score Min", 0, 100, 
-                                  value=preset_filters.get('quality_score_min', 0))
+                                  value=int(preset_filters.get('quality_score_min', 0)))
     value_score_min = st.slider("Value Score Min", 0, 100,
-                                value=preset_filters.get('value_score_min', 0))
+                                value=int(preset_filters.get('value_score_min', 0)))
     growth_score_min = st.slider("Growth Score Min", 0, 100,
-                                 value=preset_filters.get('growth_score_min', 0))
+                                 value=int(preset_filters.get('growth_score_min', 0)))
     financial_health_score_min = st.slider("Financial Health Score Min", 0, 100, 
-                                           value=preset_filters.get('financial_health_score_min', 0))
+                                           value=int(preset_filters.get('financial_health_score_min', 0)))
     momentum_score_min = st.slider("Momentum Score Min", 0, 100,
-                                   value=preset_filters.get('momentum_score_min', 0))
+                                   value=int(preset_filters.get('momentum_score_min', 0)))
     master_score_min = st.slider("Master Score Min", 0, 100,
-                                 value=preset_filters.get('master_score_min', 0))
+                                 value=int(preset_filters.get('master_score_min', 0)))
 
 # Botón de aplicar
 st.sidebar.markdown("---")
