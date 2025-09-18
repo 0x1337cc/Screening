@@ -996,13 +996,14 @@ if st.session_state.filters_applied:
             if 'Sector' in filtered_df.columns:
                 sector_data = filtered_df['Sector'].value_counts().head(10)
                 fig = px.bar(
-                    x=sector_data.values,
-                    y=sector_data.index,
+                    sector_data, # Pass the Series directly
                     orientation='h',
                     title="🏢 Top 10 Sectores",
-                    labels={'x': 'Número de Acciones', 'y': 'Sector'},
+                    labels={'value': 'Número de Acciones', 'index': 'Sector'}, 
                     color_discrete_sequence=['#4a9eff']
                 )
+                fig.update_layout(yaxis={'categoryorder':'total ascending'}) 
+                
                 fig.update_layout(template="plotly_dark", height=400)
                 st.plotly_chart(fig, use_container_width=True)
         
