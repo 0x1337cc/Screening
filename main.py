@@ -851,7 +851,8 @@ if st.session_state.filters_applied:
                     column_config[col] = st.column_config.ProgressColumn(col, format="%d", min_value=0, max_value=100)
                 elif any(keyword in col for keyword in ['Yield', 'Margin', 'Growth', 'ROE', 'ROA', 'ROIC', '%']):
                     column_config[col] = st.column_config.NumberColumn(col, format="%.2f%%")
-                elif 'Cap' in col or 'Value' in col or 'Revenue' in col or 'Income' in col or 'Debt' in col or 'Cash' in col or 'Assets' in col:
+                # ----- FIX APPLIED HERE -----
+                elif any(keyword in col for keyword in ['Cap', 'Value', 'Revenue', 'Income', 'Debt', 'Cash', 'Assets']):
                      column_config[col] = st.column_config.NumberColumn(col, format="$ {:,.0f}")
                 elif pd.api.types.is_float_dtype(df_to_display[col]):
                     column_config[col] = st.column_config.NumberColumn(col, format="%.2f")
@@ -929,6 +930,7 @@ if st.session_state.filters_applied:
                 sector_metrics,
                 column_config={
                     "Acciones": st.column_config.NumberColumn(format="%d"),
+                    # ----- FIX APPLIED HERE -----
                     "Cap Total": st.column_config.NumberColumn(format="$ {:,.0f}"),
                     "P/E Med": st.column_config.NumberColumn(format="%.1f"),
                     "ROE Med": st.column_config.NumberColumn(format="%.1f%%"),
@@ -966,7 +968,6 @@ if st.session_state.filters_applied:
             )
         else:
             st.warning("⚠️ No hay datos para exportar.")
-
 
 else:
     st.info("👈 Selecciona un screener o construye el tuyo y aplica filtros para ver resultados.")
