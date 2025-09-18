@@ -3,9 +3,10 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import warnings
 from datetime import date
+import warnings
+import io
+
 warnings.filterwarnings('ignore')
 
 # Configuración de página
@@ -16,12 +17,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS Profesional Minimalista y Estético (Versión Simplificada)
+# CSS Profesional Minimalista y Estético
 professional_css = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
-    /* --- Paleta de Colores --- */
     :root {
         --primary-color: #4a9eff;
         --primary-hover: #3a8eef;
@@ -32,7 +32,6 @@ professional_css = """
         --header-color: #f0f6fc;
     }
 
-    /* --- Estilos Generales --- */
     .stApp {
         background-color: var(--bg-color);
         font-family: 'Inter', sans-serif;
@@ -50,40 +49,6 @@ professional_css = """
         border-right: 1px solid var(--border-color);
     }
     
-    /* --- Estilos para st.dataframe --- */
-    /* Contenedor principal de la tabla */
-    .stDataFrame {
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
-        background-color: var(--content-bg);
-    }
-    
-    /* Cabecera de la tabla */
-    .stDataFrame thead th {
-        background-color: #262b36; /* Un poco más oscuro que el contenido */
-        color: var(--header-color);
-        font-weight: 600;
-        font-size: 0.9rem;
-        text-transform: uppercase; /* MAYÚSCULAS para cabeceras */
-        border-bottom: 2px solid var(--primary-color) !important;
-    }
-    
-    /* Celdas de la tabla */
-    .stDataFrame tbody tr td {
-        background-color: var(--content-bg);
-        color: var(--text-color);
-        border-bottom: 1px solid var(--border-color);
-        transition: background-color 0.2s ease;
-    }
-    
-    /* Efecto Hover en las filas */
-    .stDataFrame tbody tr:hover td {
-        background-color: #262b36; /* Color de la cabecera para resaltar */
-    }
-    
-    /* --- Otros Componentes --- */
-    
-    /* Botones */
     .stButton > button {
         background-color: var(--primary-color);
         color: white;
@@ -99,7 +64,6 @@ professional_css = """
         transform: translateY(-1px);
     }
     
-    /* Pestañas (Tabs) */
     .stTabs [data-baseweb="tab"] {
         padding: 10px 18px;
         font-weight: 500;
@@ -109,7 +73,6 @@ professional_css = """
         background-color: var(--primary-color);
     }
     
-    /* Expanders */
     .streamlit-expanderHeader {
         background-color: var(--content-bg);
         border: 1px solid var(--border-color);
@@ -123,140 +86,99 @@ professional_css = """
     }
 </style>
 """
-
 st.markdown(professional_css, unsafe_allow_html=True)
 
 # =============================================================================
-# FUNCIONES DE CARGA Y UTILIDAD
+# FUNCIONES
 # =============================================================================
 
 @st.cache_data(persist="disk", show_spinner=False, ttl=3600)
 def load_and_preprocess_data():
-    """Carga y preprocesa los datos con caché persistente"""
     try:
-        # Nombre correcto del archivo
-        df = pd.read_csv('screener-stocks-2025-09-18.csv')
-        
-        # Convertir columnas de porcentaje de string a float si es necesario
+        df = pd.read_csv('screener-stocks-2025-09-18.csv', low_memory=False)
         for col in df.columns:
             if df[col].dtype == 'object':
                 sample = df[col].dropna().head(100)
                 if sample.astype(str).str.contains('%', na=False).any():
-                    df[col] = df[col].astype(str).str.replace('%', '').astype(float, errors='ignore')
-        
-        # Crear métricas compuestas
+                    df[col] = df[col].astype(str).str.replace('%', '', regex=False).astype(float, errors='ignore')
+        date_cols = ['IPO Date', 'Ex-Div Date', 'Payment Date', 'Earnings Date', 'Last Report Date', 'Next Earnings', 'Last Earnings']
+        for col in date_cols:
+            if col in df.columns:
+                df[col] = pd.to_datetime(df[col], errors='coerce')
         df = create_composite_metrics(df)
-        
         return df
-        
     except FileNotFoundError:
         st.error("❌ **No se encontró el archivo 'screener-stocks-2025-09-18.csv'**")
         st.info("Por favor, asegúrate de que el archivo CSV esté en el mismo directorio que la aplicación.")
         st.stop()
 
 def create_composite_metrics(df):
-    """Crea métricas compuestas y scores avanzados"""
-    
-    # Quality Score (0-100)
     df['Quality_Score'] = 0
-    if 'ROE' in df.columns:
-        df['Quality_Score'] += np.where(df['ROE'] > df['ROE'].quantile(0.7), 25, 0)
-    if 'ROA' in df.columns:
-        df['Quality_Score'] += np.where(df['ROA'] > df['ROA'].quantile(0.7), 25, 0)
-    if 'ROIC' in df.columns:
-        df['Quality_Score'] += np.where(df['ROIC'] > df['ROIC'].quantile(0.7), 25, 0)
-    if 'Profit Margin' in df.columns:
-        df['Quality_Score'] += np.where(df['Profit Margin'] > df['Profit Margin'].quantile(0.7), 25, 0)
-    
-    # Value Score (0-100)
+    if 'ROE' in df.columns and df['ROE'].notna().any(): df['Quality_Score'] += np.where(df['ROE'] > df['ROE'].quantile(0.7), 25, 0)
+    if 'ROA' in df.columns and df['ROA'].notna().any(): df['Quality_Score'] += np.where(df['ROA'] > df['ROA'].quantile(0.7), 25, 0)
+    if 'ROIC' in df.columns and df['ROIC'].notna().any(): df['Quality_Score'] += np.where(df['ROIC'] > df['ROIC'].quantile(0.7), 25, 0)
+    if 'Profit Margin' in df.columns and df['Profit Margin'].notna().any(): df['Quality_Score'] += np.where(df['Profit Margin'] > df['Profit Margin'].quantile(0.7), 25, 0)
     df['Value_Score'] = 0
-    if 'PE Ratio' in df.columns:
-        df['Value_Score'] += np.where(
-            (df['PE Ratio'] > 0) & (df['PE Ratio'] < df['PE Ratio'].quantile(0.3)), 25, 0)
-    if 'PB Ratio' in df.columns:
-        df['Value_Score'] += np.where(df['PB Ratio'] < df['PB Ratio'].quantile(0.3), 25, 0)
-    if 'PS Ratio' in df.columns:
-        df['Value_Score'] += np.where(df['PS Ratio'] < df['PS Ratio'].quantile(0.3), 25, 0)
-    if 'EV/EBITDA' in df.columns:
-        df['Value_Score'] += np.where(
-            (df['EV/EBITDA'] > 0) & (df['EV/EBITDA'] < df['EV/EBITDA'].quantile(0.3)), 25, 0)
-    
-    # Growth Score (0-100)
+    if 'PE Ratio' in df.columns and df['PE Ratio'].notna().any(): df['Value_Score'] += np.where((df['PE Ratio'] > 0) & (df['PE Ratio'] < df['PE Ratio'].quantile(0.3)), 25, 0)
+    if 'PB Ratio' in df.columns and df['PB Ratio'].notna().any(): df['Value_Score'] += np.where(df['PB Ratio'] < df['PB Ratio'].quantile(0.3), 25, 0)
+    if 'PS Ratio' in df.columns and df['PS Ratio'].notna().any(): df['Value_Score'] += np.where(df['PS Ratio'] < df['PS Ratio'].quantile(0.3), 25, 0)
+    if 'EV/EBITDA' in df.columns and df['EV/EBITDA'].notna().any(): df['Value_Score'] += np.where((df['EV/EBITDA'] > 0) & (df['EV/EBITDA'] < df['EV/EBITDA'].quantile(0.3)), 25, 0)
     df['Growth_Score'] = 0
-    if 'Rev. Growth' in df.columns:
-        df['Growth_Score'] += np.where(df['Rev. Growth'] > 20, 25, 0)
-    if 'EPS Growth' in df.columns:
-        df['Growth_Score'] += np.where(df['EPS Growth'] > 20, 25, 0)
-    if 'Rev Gr. Next Y' in df.columns:
-        df['Growth_Score'] += np.where(df['Rev Gr. Next Y'] > 15, 25, 0)
-    if 'EPS Gr. Next Y' in df.columns:
-        df['Growth_Score'] += np.where(df['EPS Gr. Next Y'] > 15, 25, 0)
-    
-    # Financial Health Score (0-100)
+    if 'Rev. Growth' in df.columns and df['Rev. Growth'].notna().any(): df['Growth_Score'] += np.where(df['Rev. Growth'] > 20, 25, 0)
+    if 'EPS Growth' in df.columns and df['EPS Growth'].notna().any(): df['Growth_Score'] += np.where(df['EPS Growth'] > 20, 25, 0)
+    if 'Rev Gr. Next Y' in df.columns and df['Rev Gr. Next Y'].notna().any(): df['Growth_Score'] += np.where(df['Rev Gr. Next Y'] > 15, 25, 0)
+    if 'EPS Gr. Next Y' in df.columns and df['EPS Gr. Next Y'].notna().any(): df['Growth_Score'] += np.where(df['EPS Gr. Next Y'] > 15, 25, 0)
     df['Financial_Health_Score'] = 0
-    if 'Current Ratio' in df.columns:
-        df['Financial_Health_Score'] += np.where(df['Current Ratio'] > 1.5, 25, 0)
-    if 'Debt / Equity' in df.columns:
-        df['Financial_Health_Score'] += np.where(df['Debt / Equity'] < 1, 25, 0)
-    if 'Z-Score' in df.columns:
-        df['Financial_Health_Score'] += np.where(df['Z-Score'] > 3, 25, 0)
-    if 'FCF Yield' in df.columns:
-        df['Financial_Health_Score'] += np.where(df['FCF Yield'] > 5, 25, 0)
-    
-    # Momentum Score (0-100)
+    if 'Current Ratio' in df.columns and df['Current Ratio'].notna().any(): df['Financial_Health_Score'] += np.where(df['Current Ratio'] > 1.5, 25, 0)
+    if 'Debt / Equity' in df.columns and df['Debt / Equity'].notna().any(): df['Financial_Health_Score'] += np.where(df['Debt / Equity'] < 1, 25, 0)
+    if 'Z-Score' in df.columns and df['Z-Score'].notna().any(): df['Financial_Health_Score'] += np.where(df['Z-Score'] > 3, 25, 0)
+    if 'FCF Yield' in df.columns and df['FCF Yield'].notna().any(): df['Financial_Health_Score'] += np.where(df['FCF Yield'] > 5, 25, 0)
     df['Momentum_Score'] = 0
-    if 'Return 1Y' in df.columns:
-        df['Momentum_Score'] += np.where(df['Return 1Y'] > df['Return 1Y'].quantile(0.7), 30, 0)
-    if 'Return 3M' in df.columns:
-        df['Momentum_Score'] += np.where(df['Return 3M'] > 0, 20, 0)
-    if 'Return 1M' in df.columns:
-        df['Momentum_Score'] += np.where(df['Return 1M'] > 0, 20, 0)
-    if 'RSI' in df.columns:
-        df['Momentum_Score'] += np.where((df['RSI'] > 50) & (df['RSI'] < 70), 30, 0)
-    
-    # Composite Master Score
-    df['Master_Score'] = (
-        df['Quality_Score'] * 0.3 +
-        df['Value_Score'] * 0.25 +
-        df['Growth_Score'] * 0.2 +
-        df['Financial_Health_Score'] * 0.15 +
-        df['Momentum_Score'] * 0.1
-    )
-    
+    if 'Return 1Y' in df.columns and df['Return 1Y'].notna().any(): df['Momentum_Score'] += np.where(df['Return 1Y'] > df['Return 1Y'].quantile(0.7), 30, 0)
+    if 'Return 3M' in df.columns and df['Return 3M'].notna().any(): df['Momentum_Score'] += np.where(df['Return 3M'] > 0, 20, 0)
+    if 'Return 1M' in df.columns and df['Return 1M'].notna().any(): df['Momentum_Score'] += np.where(df['Return 1M'] > 0, 20, 0)
+    if 'RSI' in df.columns and df['RSI'].notna().any(): df['Momentum_Score'] += np.where((df['RSI'] > 50) & (df['RSI'] < 70), 30, 0)
+    df['Master_Score'] = (df['Quality_Score']*0.3 + df['Value_Score']*0.25 + df['Growth_Score']*0.2 + df['Financial_Health_Score']*0.15 + df['Momentum_Score']*0.1)
     return df
 
 def format_number(num, prefix="", suffix="", decimals=2):
-    """Formatea números de forma legible"""
-    if pd.isna(num):
-        return "N/A"
-    
-    if abs(num) >= 1e12:
-        return f"{prefix}{num/1e12:.{decimals}f}T{suffix}"
-    elif abs(num) >= 1e9:
-        return f"{prefix}{num/1e9:.{decimals}f}B{suffix}"
-    elif abs(num) >= 1e6:
-        return f"{prefix}{num/1e6:.{decimals}f}M{suffix}"
-    elif abs(num) >= 1e3:
-        return f"{prefix}{num/1e3:.{decimals}f}K{suffix}"
-    else:
-        return f"{prefix}{num:.{decimals}f}{suffix}"
+    if pd.isna(num): return "N/A"
+    if abs(num) >= 1e12: return f"{prefix}{num/1e12:.{decimals}f}T{suffix}"
+    elif abs(num) >= 1e9: return f"{prefix}{num/1e9:.{decimals}f}B{suffix}"
+    elif abs(num) >= 1e6: return f"{prefix}{num/1e6:.{decimals}f}M{suffix}"
+    elif abs(num) >= 1e3: return f"{prefix}{num/1e3:.{decimals}f}K{suffix}"
+    else: return f"{prefix}{num:.{decimals}f}{suffix}"
 
 def parse_market_cap(value_str):
-    """Convierte string de market cap a número"""
-    if not value_str or value_str == "":
-        return None
+    if not value_str or value_str == "": return None
     value_str = value_str.upper().replace(',', '').strip()
     multipliers = {'K': 1e3, 'M': 1e6, 'B': 1e9, 'T': 1e12}
     for suffix, multiplier in multipliers.items():
         if value_str.endswith(suffix):
-            try:
-                return float(value_str[:-1]) * multiplier
-            except:
-                return None
-    try:
-        return float(value_str)
-    except:
-        return None
+            try: return float(value_str[:-1]) * multiplier
+            except: return None
+    try: return float(value_str)
+    except: return None
+
+def style_dataframe(df_to_style):
+    format_dict = {}
+    for col in df_to_style.columns:
+        if 'Score' in col: format_dict[col] = '{:,.0f}'
+        elif any(keyword in col for keyword in ['Yield', 'Margin', 'Growth', 'ROE', 'ROA', 'ROIC', '%']): format_dict[col] = '{:,.2f}%'
+        elif any(keyword in col for keyword in ['Ratio', 'PE', 'PB', 'PS', 'Beta']): format_dict[col] = '{:,.2f}'
+        elif 'Cap' in col or 'Value' in col or 'Revenue' in col or 'Income' in col or 'Debt' in col or 'Cash' in col: format_dict[col] = lambda x: format_number(x, prefix='$') if pd.notna(x) else '-'
+        elif pd.api.types.is_float_dtype(df_to_style[col]): format_dict[col] = '{:,.2f}'
+            
+    styled_df = df_to_style.style.format(format_dict, na_rep='-').set_table_styles([
+        {'selector': 'th', 'props': [('background-color', '#262b36'), ('color', '#f0f6fc'), ('font-weight', 'bold'), ('text-transform', 'capitalize'), ('border-bottom', '2px solid #4a9eff'), ('text-align', 'left'), ('padding', '10px 12px')]},
+        {'selector': 'td', 'props': [('background-color', '#1c1f26'), ('color', '#c9d1d9'), ('border-bottom', '1px solid #2e3139'), ('padding', '8px 12px')]},
+        {'selector': 'tbody tr:hover', 'props': [('background-color', '#2a313d')]}
+    ])
+    
+    score_cols = [col for col in df_to_style.columns if 'Score' in col]
+    if score_cols:
+        styled_df = styled_df.background_gradient(cmap='RdYlGn', subset=score_cols, vmin=0, vmax=100)
+    return styled_df
 
 # =============================================================================
 # SCREENERS PROFESIONALES
@@ -482,80 +404,27 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =============================================================================
-# SIDEBAR - SELECTOR DE SCREENER Y FILTROS BÁSICOS
+# SIDEBAR
 # =============================================================================
-
 st.sidebar.markdown("# 🎯 Screener Selector")
 st.sidebar.markdown("---")
-
-# Selector de Screener
-selected_screener = st.sidebar.selectbox(
-    "📋 **Selecciona un Screener**",
-    options=list(SCREENERS.keys()),
-    index=list(SCREENERS.keys()).index(st.session_state.selected_screener),
-    help="Elige un screener predefinido o construye el tuyo"
-)
-
+selected_screener = st.sidebar.selectbox("📋 **Selecciona un Screener**", options=list(SCREENERS.keys()), index=list(SCREENERS.keys()).index(st.session_state.selected_screener), help="Elige un screener predefinido o construye el tuyo")
 st.session_state.selected_screener = selected_screener
-
-# Información del screener
-screener_config = SCREENERS[selected_screener]
+screener_config = SCREENERS.get(selected_screener, {"description": "", "filters": {}})
 st.sidebar.info(f"📝 {screener_config['description']}")
-
 st.sidebar.markdown("---")
-
-# FILTROS BÁSICOS EN SIDEBAR
 st.sidebar.markdown("### 🔍 Filtros Básicos")
-
-# Búsqueda
 search_term = st.sidebar.text_input("🔎 Buscar", placeholder="Ticker o nombre...")
-
-# Sectores
-sectors_filter = st.sidebar.multiselect(
-    "🏢 Sectores",
-    options=sorted(df['Sector'].dropna().unique()),
-    default=screener_config['filters'].get('sectors', [])
-)
-
-# Market Cap
+sectors_filter = st.sidebar.multiselect("🏢 Sectores", options=sorted(df['Sector'].dropna().unique()), default=screener_config.get('filters', {}).get('sectors', []))
 st.sidebar.markdown("**💰 Market Cap**")
 col1, col2 = st.sidebar.columns(2)
-with col1:
-    min_mcap = st.text_input(
-        "Min",
-        value=f"{int(screener_config['filters'].get('market_cap_min', 0)/1e6)}M" if screener_config['filters'].get('market_cap_min', 0) > 0 else "",
-        placeholder="100M"
-    )
-with col2:
-    max_mcap = st.text_input(
-        "Max",
-        value=f"{int(screener_config['filters'].get('market_cap_max', 0)/1e9)}B" if screener_config['filters'].get('market_cap_max', 0) > 0 else "",
-        placeholder="10B"
-    )
-
-# Exchanges
-exchanges = st.sidebar.multiselect(
-    "🏛️ Exchanges",
-    options=sorted(df['Exchange'].dropna().unique()) if 'Exchange' in df.columns else [],
-    default=[]
-)
-
-# Índices
-if 'In Index' in df.columns:
-    in_index = st.sidebar.multiselect(
-        "📈 Índices",
-        ["SP500", "NASDAQ100", "DOW30"],
-        default=[]
-    )
-else:
-    in_index = []
-
+min_mcap = col1.text_input("Min", value=f"{int(screener_config.get('filters', {}).get('market_cap_min', 0)/1e6)}M" if screener_config.get('filters', {}).get('market_cap_min', 0) > 0 else "", placeholder="100M")
+max_mcap = col2.text_input("Max", value=f"{int(screener_config.get('filters', {}).get('market_cap_max', 0)/1e9)}B" if screener_config.get('filters', {}).get('market_cap_max', 0) > 0 else "", placeholder="10B")
+exchanges = st.sidebar.multiselect("🏛️ Exchanges", options=sorted(df['Exchange'].dropna().unique()) if 'Exchange' in df.columns else [], default=[])
+if 'In Index' in df.columns: in_index = st.sidebar.multiselect("📈 Índices", ["SP500", "NASDAQ100", "DOW30"], default=[])
+else: in_index = []
 st.sidebar.markdown("---")
-
-# Botón de aplicar filtros básicos
-apply_basic = st.sidebar.button("🔍 **APLICAR FILTROS**", type="primary", use_container_width=True)
-
-if apply_basic:
+if st.sidebar.button("🔍 **APLICAR FILTROS**", type="primary", use_container_width=True):
     st.session_state.filters_applied = True
 
 # =============================================================================
@@ -565,240 +434,242 @@ tab_filters, tab_results, tab_analysis, tab_rankings, tab_sector, tab_export = s
 
 with tab_filters:
     st.markdown("### ⚙️ Constructor de Filtros Avanzados")
-    st.info("💡 Introduce valores en los campos para filtrar. Solo se aplicarán los filtros que rellenes.")
+    st.info("💡 Selecciona un screener en la barra lateral para precargar sus filtros o construye el tuyo.")
+    
+    preset_filters = screener_config.get('filters', {})
     
     st.markdown("---")
     st.markdown("#### 📊 Métricas de Valoración")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        pe_min = st.number_input("P/E Min", value=None, placeholder="Ej: 0", format="%.2f")
-        pb_min = st.number_input("P/B Min", value=None, placeholder="Ej: 0", format="%.2f")
+        pe_min = st.number_input("P/E Min", value=preset_filters.get('pe_min'), placeholder="Ej: 0", format="%.2f")
+        pb_min = st.number_input("P/B Min", value=preset_filters.get('pb_min'), placeholder="Ej: 0", format="%.2f")
     with col2:
-        pe_max = st.number_input("P/E Max", value=None, placeholder="Ej: 20", format="%.2f")
-        pb_max = st.number_input("P/B Max", value=None, placeholder="Ej: 2.5", format="%.2f")
+        pe_max = st.number_input("P/E Max", value=preset_filters.get('pe_max'), placeholder="Ej: 20", format="%.2f")
+        pb_max = st.number_input("P/B Max", value=preset_filters.get('pb_max'), placeholder="Ej: 2.5", format="%.2f")
     with col3:
-        ps_min = st.number_input("P/S Min", value=None, placeholder="Ej: 0", format="%.2f")
-        peg_min = st.number_input("PEG Min", value=None, placeholder="Ej: 0", format="%.2f")
+        ps_min = st.number_input("P/S Min", value=preset_filters.get('ps_min'), placeholder="Ej: 0", format="%.2f")
+        peg_min = st.number_input("PEG Min", value=preset_filters.get('peg_min'), placeholder="Ej: 0", format="%.2f")
     with col4:
-        ps_max = st.number_input("P/S Max", value=None, placeholder="Ej: 3", format="%.2f")
-        peg_max = st.number_input("PEG Max", value=None, placeholder="Ej: 1.2", format="%.2f")
+        ps_max = st.number_input("P/S Max", value=preset_filters.get('ps_max'), placeholder="Ej: 3", format="%.2f")
+        peg_max = st.number_input("PEG Max", value=preset_filters.get('peg_max'), placeholder="Ej: 1.2", format="%.2f")
 
     with st.expander("➕ Más filtros de Valoración"):
         st.markdown("##### Ratios sobre Valor de Empresa (EV)")
         ec1, ec2, ec3 = st.columns(3)
         with ec1:
-            ev_ebitda_min = st.number_input("EV/EBITDA Min", value=None, format="%.2f")
-            ev_sales_min = st.number_input("EV/Sales Min", value=None, format="%.2f")
+            ev_ebitda_min = st.number_input("EV/EBITDA Min", value=preset_filters.get('ev_ebitda_min'), format="%.2f")
+            ev_sales_min = st.number_input("EV/Sales Min", value=preset_filters.get('ev_sales_min'), format="%.2f")
         with ec2:
-            ev_ebitda_max = st.number_input("EV/EBITDA Max", value=None, format="%.2f")
-            ev_sales_max = st.number_input("EV/Sales Max", value=None, format="%.2f")
+            ev_ebitda_max = st.number_input("EV/EBITDA Max", value=preset_filters.get('ev_ebitda_max'), format="%.2f")
+            ev_sales_max = st.number_input("EV/Sales Max", value=preset_filters.get('ev_sales_max'), format="%.2f")
         with ec3:
-            ev_fcf_min = st.number_input("EV/FCF Min", value=None, format="%.2f")
-            ev_fcf_max = st.number_input("EV/FCF Max", value=None, format="%.2f")
+            ev_fcf_min = st.number_input("EV/FCF Min", value=preset_filters.get('ev_fcf_min'), format="%.2f")
+            ev_fcf_max = st.number_input("EV/FCF Max", value=preset_filters.get('ev_fcf_max'), format="%.2f")
 
         st.markdown("##### Ratios sobre Flujo de Caja (Cash Flow)")
         ec1, ec2, ec3 = st.columns(3)
         with ec1:
-            pcf_min = st.number_input("P/CF Min", value=None, format="%.2f")
-            pfcf_min = st.number_input("P/FCF Min", value=None, format="%.2f")
+            pcf_min = st.number_input("P/CF Min", value=preset_filters.get('pcf_min'), format="%.2f")
+            pfcf_min = st.number_input("P/FCF Min", value=preset_filters.get('pfcf_min'), format="%.2f")
         with ec2:
-            pcf_max = st.number_input("P/CF Max", value=None, format="%.2f")
-            pfcf_max = st.number_input("P/FCF Max", value=None, format="%.2f")
+            pcf_max = st.number_input("P/CF Max", value=preset_filters.get('pcf_max'), format="%.2f")
+            pfcf_max = st.number_input("P/FCF Max", value=preset_filters.get('pfcf_max'), format="%.2f")
         with ec3:
-            fcf_yield_min = st.number_input("FCF Yield Min %", value=None, format="%.2f")
-            earnings_yield_min = st.number_input("Earnings Yield Min %", value=None, format="%.2f")
+            fcf_yield_min = st.number_input("FCF Yield Min %", value=preset_filters.get('fcf_yield_min'), format="%.2f")
+            earnings_yield_min = st.number_input("Earnings Yield Min %", value=preset_filters.get('earnings_yield_min'), format="%.2f")
 
         st.markdown("##### Ratios sobre Valor Contable (Book Value)")
         ec1, ec2 = st.columns(2)
         with ec1:
-            ptbv_min = st.number_input("P/TBV Min", value=None, format="%.2f")
+            ptbv_min = st.number_input("P/TBV Min", value=preset_filters.get('ptbv_min'), format="%.2f")
         with ec2:
-            ptbv_max = st.number_input("P/TBV Max", value=None, format="%.2f")
+            ptbv_max = st.number_input("P/TBV Max", value=preset_filters.get('ptbv_max'), format="%.2f")
         
         st.markdown("##### Fórmulas de Valor Intrínseco")
         ec1, ec2 = st.columns(2)
         with ec1:
-            graham_upside_min = st.number_input("Graham Upside Min %", value=None, format="%.2f")
+            graham_upside_min = st.number_input("Graham Upside Min %", value=preset_filters.get('graham_upside_min'), format="%.2f")
         with ec2:
-            lynch_upside_min = st.number_input("Lynch FV Upside Min %", value=None, format="%.2f")
+            lynch_upside_min = st.number_input("Lynch FV Upside Min %", value=preset_filters.get('lynch_upside_min'), format="%.2f")
     
     st.markdown("---")
     st.markdown("#### 📈 Métricas de Crecimiento")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        rev_growth_min = st.number_input("Rev Growth TTM Min %", value=None, format="%.2f")
-        eps_growth_min = st.number_input("EPS Growth TTM Min %", value=None, format="%.2f")
+        rev_growth_min = st.number_input("Rev Growth TTM Min %", value=preset_filters.get('rev_growth_min'), format="%.2f")
+        eps_growth_min = st.number_input("EPS Growth TTM Min %", value=preset_filters.get('eps_growth_min'), format="%.2f")
     with col2:
-        rev_growth_max = st.number_input("Rev Growth TTM Max %", value=None, format="%.2f")
-        eps_growth_max = st.number_input("EPS Growth TTM Max %", value=None, format="%.2f")
+        rev_growth_max = st.number_input("Rev Growth TTM Max %", value=preset_filters.get('rev_growth_max'), format="%.2f")
+        eps_growth_max = st.number_input("EPS Growth TTM Max %", value=preset_filters.get('eps_growth_max'), format="%.2f")
     with col3:
-        rev_growth_3y_min = st.number_input("Rev CAGR 3Y Min %", value=None, format="%.2f")
-        eps_growth_3y_min = st.number_input("EPS CAGR 3Y Min %", value=None, format="%.2f")
+        rev_growth_3y_min = st.number_input("Rev CAGR 3Y Min %", value=preset_filters.get('rev_growth_3y_min'), format="%.2f")
+        eps_growth_3y_min = st.number_input("EPS CAGR 3Y Min %", value=preset_filters.get('eps_growth_3y_min'), format="%.2f")
     with col4:
-        rev_growth_5y_min = st.number_input("Rev CAGR 5Y Min %", value=None, format="%.2f")
-        eps_growth_5y_min = st.number_input("EPS CAGR 5Y Min %", value=None, format="%.2f")
+        rev_growth_5y_min = st.number_input("Rev CAGR 5Y Min %", value=preset_filters.get('rev_growth_5y_min'), format="%.2f")
+        eps_growth_5y_min = st.number_input("EPS CAGR 5Y Min %", value=preset_filters.get('eps_growth_5y_min'), format="%.2f")
 
     with st.expander("➕ Más filtros de Crecimiento"):
         st.markdown("##### Crecimiento Estimado (Forward)")
         ec1, ec2, ec3 = st.columns(3)
         with ec1:
-            rev_growth_next_y_min = st.number_input("Rev Growth Next Y Min %", value=None, format="%.2f")
-            eps_growth_next_y_min = st.number_input("EPS Growth Next Y Min %", value=None, format="%.2f")
+            rev_growth_next_y_min = st.number_input("Rev Growth Next Y Min %", value=preset_filters.get('rev_growth_next_y_min'), format="%.2f")
+            eps_growth_next_y_min = st.number_input("EPS Growth Next Y Min %", value=preset_filters.get('eps_growth_next_y_min'), format="%.2f")
         with ec2:
-            rev_growth_next_5y_min = st.number_input("Rev Growth Next 5Y Min %", value=None, format="%.2f")
-            eps_growth_next_5y_min = st.number_input("EPS Growth Next 5Y Min %", value=None, format="%.2f")
+            rev_growth_next_5y_min = st.number_input("Rev Growth Next 5Y Min %", value=preset_filters.get('rev_growth_next_5y_min'), format="%.2f")
+            eps_growth_next_5y_min = st.number_input("EPS Growth Next 5Y Min %", value=preset_filters.get('eps_growth_next_5y_min'), format="%.2f")
         with ec3:
-            rev_growth_next_q_min = st.number_input("Rev Growth Next Q Min %", value=None, format="%.2f")
-            eps_growth_next_q_min = st.number_input("EPS Growth Next Q Min %", value=None, format="%.2f")
+            rev_growth_next_q_min = st.number_input("Rev Growth Next Q Min %", value=preset_filters.get('rev_growth_next_q_min'), format="%.2f")
+            eps_growth_next_q_min = st.number_input("EPS Growth Next Q Min %", value=preset_filters.get('eps_growth_next_q_min'), format="%.2f")
 
         st.markdown("##### Crecimiento del Flujo de Caja (FCF)")
         ec1, ec2, ec3 = st.columns(3)
         with ec1:
-            fcf_growth_min = st.number_input("FCF Growth TTM Min %", value=None, format="%.2f")
+            fcf_growth_min = st.number_input("FCF Growth TTM Min %", value=preset_filters.get('fcf_growth_min'), format="%.2f")
         with ec2:
-            fcf_growth_3y_min = st.number_input("FCF CAGR 3Y Min %", value=None, format="%.2f")
+            fcf_growth_3y_min = st.number_input("FCF CAGR 3Y Min %", value=preset_filters.get('fcf_growth_3y_min'), format="%.2f")
         with ec3:
-            fcf_growth_5y_min = st.number_input("FCF CAGR 5Y Min %", value=None, format="%.2f")
+            fcf_growth_5y_min = st.number_input("FCF CAGR 5Y Min %", value=preset_filters.get('fcf_growth_5y_min'), format="%.2f")
             
     st.markdown("---")
     st.markdown("#### 💎 Rentabilidad y Márgenes")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        roe_min = st.number_input("ROE Min %", value=None, format="%.2f")
-        roa_min = st.number_input("ROA Min %", value=None, format="%.2f")
+        roe_min = st.number_input("ROE Min %", value=preset_filters.get('roe_min'), format="%.2f")
+        roa_min = st.number_input("ROA Min %", value=preset_filters.get('roa_min'), format="%.2f")
     with col2:
-        roic_min = st.number_input("ROIC Min %", value=None, format="%.2f")
-        roce_min = st.number_input("ROCE Min %", value=None, format="%.2f")
+        roic_min = st.number_input("ROIC Min %", value=preset_filters.get('roic_min'), format="%.2f")
+        roce_min = st.number_input("ROCE Min %", value=preset_filters.get('roce_min'), format="%.2f")
     with col3:
-        profit_margin_min = st.number_input("Profit Margin Min %", value=None, format="%.2f")
-        gross_margin_min = st.number_input("Gross Margin Min %", value=None, format="%.2f")
+        profit_margin_min = st.number_input("Profit Margin Min %", value=preset_filters.get('profit_margin_min'), format="%.2f")
+        gross_margin_min = st.number_input("Gross Margin Min %", value=preset_filters.get('gross_margin_min'), format="%.2f")
     with col4:
-        operating_margin_min = st.number_input("Operating Margin Min %", value=None, format="%.2f")
-        fcf_margin_min = st.number_input("FCF Margin Min %", value=None, format="%.2f")
+        operating_margin_min = st.number_input("Operating Margin Min %", value=preset_filters.get('operating_margin_min'), format="%.2f")
+        fcf_margin_min = st.number_input("FCF Margin Min %", value=preset_filters.get('fcf_margin_min'), format="%.2f")
 
     with st.expander("➕ Más filtros de Rentabilidad"):
         st.markdown("##### Márgenes Adicionales")
         ec1, ec2 = st.columns(2)
         with ec1:
-            ebitda_margin_min = st.number_input("EBITDA Margin Min %", value=None, format="%.2f")
+            ebitda_margin_min = st.number_input("EBITDA Margin Min %", value=preset_filters.get('ebitda_margin_min'), format="%.2f")
         with ec2:
-            ebit_margin_min = st.number_input("EBIT Margin Min %", value=None, format="%.2f")
+            ebit_margin_min = st.number_input("EBIT Margin Min %", value=preset_filters.get('ebit_margin_min'), format="%.2f")
         
         st.markdown("##### Rentabilidad Media (Consistencia)")
         ec1, ec2, ec3 = st.columns(3)
         with ec1:
-            roe_5y_min = st.number_input("ROE (5Y Avg) Min %", value=None, format="%.2f")
+            roe_5y_min = st.number_input("ROE (5Y Avg) Min %", value=preset_filters.get('roe_5y_min'), format="%.2f")
         with ec2:
-            roa_5y_min = st.number_input("ROA (5Y Avg) Min %", value=None, format="%.2f")
+            roa_5y_min = st.number_input("ROA (5Y Avg) Min %", value=preset_filters.get('roa_5y_min'), format="%.2f")
         with ec3:
-            roic_5y_min = st.number_input("ROIC (5Y Avg) Min %", value=None, format="%.2f")
+            roic_5y_min = st.number_input("ROIC (5Y Avg) Min %", value=preset_filters.get('roic_5y_min'), format="%.2f")
         
         st.markdown("##### Eficiencia")
         ec1, ec2 = st.columns(2)
         with ec1:
-            asset_turnover_min = st.number_input("Asset Turnover Min", value=None, format="%.2f")
+            asset_turnover_min = st.number_input("Asset Turnover Min", value=preset_filters.get('asset_turnover_min'), format="%.2f")
         with ec2:
-            rd_rev_min = st.number_input("R&D / Revenue Min %", value=None, format="%.2f")
+            rd_rev_min = st.number_input("R&D / Revenue Min %", value=preset_filters.get('rd_rev_min'), format="%.2f")
     
     st.markdown("---")
     st.markdown("#### 🏥 Salud Financiera")
     col1, col2, col3 = st.columns(3)
     with col1:
-        current_ratio_min = st.number_input("Current Ratio Min", value=None, format="%.2f")
-        quick_ratio_min = st.number_input("Quick Ratio Min", value=None, format="%.2f")
+        current_ratio_min = st.number_input("Current Ratio Min", value=preset_filters.get('current_ratio_min'), format="%.2f")
+        quick_ratio_min = st.number_input("Quick Ratio Min", value=preset_filters.get('quick_ratio_min'), format="%.2f")
     with col2:
-        debt_equity_max = st.number_input("Debt/Equity Max", value=None, format="%.2f")
-        debt_ebitda_max = st.number_input("Debt/EBITDA Max", value=None, format="%.2f")
+        debt_equity_max = st.number_input("Debt/Equity Max", value=preset_filters.get('debt_equity_max'), format="%.2f")
+        debt_ebitda_max = st.number_input("Debt/EBITDA Max", value=preset_filters.get('debt_ebitda_max'), format="%.2f")
     with col3:
-        z_score_min = st.number_input("Altman Z-Score Min", value=None, format="%.2f")
-        f_score_min = st.number_input("Piotroski F-Score Min", value=None, min_value=0, max_value=9, step=1)
+        z_score_min = st.number_input("Altman Z-Score Min", value=preset_filters.get('z_score_min'), format="%.2f")
+        f_score_min = st.number_input("Piotroski F-Score Min", value=preset_filters.get('f_score_min'), min_value=0, max_value=9, step=1)
 
     with st.expander("➕ Más filtros de Salud Financiera"):
         ec1, ec2, ec3 = st.columns(3)
         with ec1:
-            debt_fcf_max = st.number_input("Debt/FCF Max", value=None, format="%.2f")
-            interest_coverage_min = st.number_input("Interest Coverage Min", value=None, format="%.2f")
+            debt_fcf_max = st.number_input("Debt/FCF Max", value=preset_filters.get('debt_fcf_max'), format="%.2f")
+            interest_coverage_min = st.number_input("Interest Coverage Min", value=preset_filters.get('interest_coverage_min'), format="%.2f")
         with ec2:
-            cash_mcap_min = st.number_input("Total Cash / M.Cap Min %", value=None, format="%.2f")
-            debt_growth_yoy_max = st.number_input("Debt Growth (YoY) Max %", value=None, format="%.2f")
+            cash_mcap_min = st.number_input("Total Cash / M.Cap Min %", value=preset_filters.get('cash_mcap_min'), format="%.2f")
+            debt_growth_yoy_max = st.number_input("Debt Growth (YoY) Max %", value=preset_filters.get('debt_growth_yoy_max'), format="%.2f")
         with ec3:
-            total_debt_min = st.number_input("Total Debt Min ($)", value=None)
-            total_cash_min = st.number_input("Total Cash Min ($)", value=None)
+            total_debt_min = st.number_input("Total Debt Min ($)", value=preset_filters.get('total_debt_min'))
+            total_cash_min = st.number_input("Total Cash Min ($)", value=preset_filters.get('total_cash_min'))
 
     st.markdown("---")
     st.markdown("#### 💵 Dividendos y Retorno al Accionista")
     col1, col2, col3 = st.columns(3)
     with col1:
-        div_yield_min = st.number_input("Dividend Yield Min %", value=None, format="%.2f")
-        div_yield_max = st.number_input("Dividend Yield Max %", value=None, format="%.2f")
+        div_yield_min = st.number_input("Dividend Yield Min %", value=preset_filters.get('div_yield_min'), format="%.2f")
+        div_yield_max = st.number_input("Dividend Yield Max %", value=preset_filters.get('div_yield_max'), format="%.2f")
     with col2:
-        payout_ratio_max = st.number_input("Payout Ratio Max %", value=None, format="%.2f")
-        years_min = st.number_input("Years of Div Growth Min", value=None, min_value=0, step=1)
+        payout_ratio_max = st.number_input("Payout Ratio Max %", value=preset_filters.get('payout_ratio_max'), format="%.2f")
+        years_min = st.number_input("Years of Div Growth Min", value=preset_filters.get('years_min'), min_value=0, step=1)
     with col3:
-        shareholder_yield_min = st.number_input("Shareholder Yield Min %", value=None, format="%.2f")
-        buyback_yield_min = st.number_input("Buyback Yield Min %", value=None, format="%.2f")
+        shareholder_yield_min = st.number_input("Shareholder Yield Min %", value=preset_filters.get('shareholder_yield_min'), format="%.2f")
+        buyback_yield_min = st.number_input("Buyback Yield Min %", value=preset_filters.get('buyback_yield_min'), format="%.2f")
 
     with st.expander("➕ Más filtros de Dividendos"):
         ec1, ec2, ec3 = st.columns(3)
         with ec1:
-            div_growth_1y_min = st.number_input("Div Growth (1Y) Min %", value=None, format="%.2f")
+            div_growth_1y_min = st.number_input("Div Growth (1Y) Min %", value=preset_filters.get('div_growth_1y_min'), format="%.2f")
         with ec2:
-            div_growth_3y_min = st.number_input("Div Growth (3Y) Min %", value=None, format="%.2f")
+            div_growth_3y_min = st.number_input("Div Growth (3Y) Min %", value=preset_filters.get('div_growth_3y_min'), format="%.2f")
         with ec3:
-            div_growth_5y_min = st.number_input("Div Growth (5Y) Min %", value=None, format="%.2f")
+            div_growth_5y_min = st.number_input("Div Growth (5Y) Min %", value=preset_filters.get('div_growth_5y_min'), format="%.2f")
     
     st.markdown("---")
     st.markdown("#### 📉 Técnicos y Retornos")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown("##### Indicadores")
-        rsi_min = st.number_input("RSI Min", value=None, min_value=0.0, max_value=100.0, format="%.2f")
-        rsi_max = st.number_input("RSI Max", value=None, min_value=0.0, max_value=100.0, format="%.2f")
-        beta_max = st.number_input("Beta Max", value=None, format="%.2f")
+        rsi_min = st.number_input("RSI Min", value=preset_filters.get('rsi_min'), min_value=0.0, max_value=100.0, format="%.2f")
+        rsi_max = st.number_input("RSI Max", value=preset_filters.get('rsi_max'), min_value=0.0, max_value=100.0, format="%.2f")
+        beta_max = st.number_input("Beta Max", value=preset_filters.get('beta_max'), format="%.2f")
     with col2:
         st.markdown("##### Retornos a Corto Plazo")
-        return_1w_min = st.number_input("Return 1W Min %", value=None, format="%.2f")
-        return_1m_min = st.number_input("Return 1M Min %", value=None, format="%.2f")
-        return_3m_min = st.number_input("Return 3M Min %", value=None, format="%.2f")
+        return_1w_min = st.number_input("Return 1W Min %", value=preset_filters.get('return_1w_min'), format="%.2f")
+        return_1m_min = st.number_input("Return 1M Min %", value=preset_filters.get('return_1m_min'), format="%.2f")
+        return_3m_min = st.number_input("Return 3M Min %", value=preset_filters.get('return_3m_min'), format="%.2f")
     with col3:
         st.markdown("##### Retornos a Largo Plazo")
-        return_ytd_min = st.number_input("Return YTD Min %", value=None, format="%.2f")
-        return_1y_min = st.number_input("Return 1Y Min %", value=None, format="%.2f")
-        return_3y_min = st.number_input("Return 3Y Min %", value=None, format="%.2f")
+        return_ytd_min = st.number_input("Return YTD Min %", value=preset_filters.get('return_ytd_min'), format="%.2f")
+        return_1y_min = st.number_input("Return 1Y Min %", value=preset_filters.get('return_1y_min'), format="%.2f")
+        return_3y_min = st.number_input("Return 3Y Min %", value=preset_filters.get('return_3y_min'), format="%.2f")
 
     with st.expander("➕ Más filtros Técnicos y de Retornos"):
         ec1, ec2, ec3 = st.columns(3)
         with ec1:
-            distance_52w_high_max = st.number_input("Dist from 52W High Max %", value=None, help="Ej: 10 para acciones a un 10% o menos de su máximo.", format="%.2f")
-            ath_chg_max = st.number_input("Dist from All-Time High Max %", value=None, format="%.2f")
+            distance_52w_high_max = st.number_input("Dist from 52W High Max %", value=preset_filters.get('distance_52w_high_max'), help="Ej: 10 para acciones a un 10% o menos de su máximo.", format="%.2f")
+            ath_chg_max = st.number_input("Dist from All-Time High Max %", value=preset_filters.get('ath_chg_max'), format="%.2f")
         with ec2:
-            distance_52w_low_min = st.number_input("Dist from 52W Low Min %", value=None, help="Ej: 10 para acciones a un 10% o más de su mínimo.", format="%.2f")
-            atl_chg_min = st.number_input("Dist from All-Time Low Min %", value=None, format="%.2f")
+            distance_52w_low_min = st.number_input("Dist from 52W Low Min %", value=preset_filters.get('distance_52w_low_min'), help="Ej: 10 para acciones a un 10% o más de su mínimo.", format="%.2f")
+            atl_chg_min = st.number_input("Dist from All-Time Low Min %", value=preset_filters.get('atl_chg_min'), format="%.2f")
         with ec3:
-            rel_volume_min = st.number_input("Relative Volume Min", value=None, help="Ej: 1.5 para volumen 50% superior a la media.", format="%.2f")
-            atr_min = st.number_input("ATR Min", value=None, format="%.2f")
+            rel_volume_min = st.number_input("Relative Volume Min", value=preset_filters.get('rel_volume_min'), help="Ej: 1.5 para volumen 50% superior a la media.", format="%.2f")
+            atr_min = st.number_input("ATR Min", value=preset_filters.get('atr_min'), format="%.2f")
     
     st.markdown("---")
     st.markdown("#### 🏢 Perfil y Propiedad")
     col1, col2, col3 = st.columns(3)
     with col1:
-        employees_min = st.number_input("Nº Empleados Min", value=None, min_value=0, step=100)
-        analysts_min = st.number_input("Nº Analistas Min", value=None, min_value=0, step=1)
+        employees_min = st.number_input("Nº Empleados Min", value=preset_filters.get('employees_min'), min_value=0, step=100)
+        analysts_min = st.number_input("Nº Analistas Min", value=preset_filters.get('analysts_min'), min_value=0, step=1)
     with col2:
-        insider_ownership_min = st.number_input("Insider Ownership Min %", value=None, format="%.2f")
-        institutional_ownership_min = st.number_input("Inst. Ownership Min %", value=None, format="%.2f")
+        insider_ownership_min = st.number_input("Insider Ownership Min %", value=preset_filters.get('insider_ownership_min'), format="%.2f")
+        institutional_ownership_min = st.number_input("Inst. Ownership Min %", value=preset_filters.get('institutional_ownership_min'), format="%.2f")
     with col3:
-        short_float_max = st.number_input("Short % Float Max", value=None, format="%.2f")
+        short_float_max = st.number_input("Short % Float Max", value=preset_filters.get('short_float_max'), format="%.2f")
         
     st.markdown("---")
     st.markdown("#### 🎯 Scores Algorítmicos")
     col1, col2, col3, col4, col5 = st.columns(5)
-    quality_score_min = col1.slider("Quality", 0, 100, 0)
-    value_score_min = col2.slider("Value", 0, 100, 0)
-    growth_score_min = col3.slider("Growth", 0, 100, 0)
-    financial_health_score_min = col4.slider("Health", 0, 100, 0)
-    momentum_score_min = col5.slider("Momentum", 0, 100, 0)
-    master_score_min = st.slider("**Master Score Min**", 0, 100, 0)
+    quality_score_min = col1.slider("Quality", 0, 100, value=preset_filters.get('quality_score_min', 0))
+    value_score_min = col2.slider("Value", 0, 100, value=preset_filters.get('value_score_min', 0))
+    growth_score_min = col3.slider("Growth", 0, 100, value=preset_filters.get('growth_score_min', 0))
+    financial_health_score_min = col4.slider("Health", 0, 100, value=preset_filters.get('financial_health_score_min', 0))
+    momentum_score_min = col5.slider("Momentum", 0, 100, value=preset_filters.get('momentum_score_min', 0))
+    master_score_min = st.slider("**Master Score Min**", 0, 100, value=preset_filters.get('master_score_min', 0))
 
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 1, 1])
