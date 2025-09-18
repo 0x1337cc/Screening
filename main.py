@@ -965,6 +965,160 @@ if st.session_state.filters_applied:
     
     return html_table
 
+def create_beautiful_table(df, selected_columns=None, sort_column=None, sort_order="Descendente", n_rows=100):
+    """Create a beautiful HTML table with custom styling"""
+    
+    df_display = df.copy()
+    
+    # Apply column selection
+    if selected_columns:
+        df_display = df_display[selected_columns]
+    
+    # Apply sorting
+    if sort_column and sort_column in df_display.columns:
+        df_display = df_display.sort_values(by=sort_column, ascending=(sort_order == "Ascendente"))
+    
+    # Limit rows
+    df_display = df_display.head(n_rows)
+    
+    # Create HTML table
+    html_rows = []
+    for idx, row in df_display.iterrows():
+        row_html = "<tr>"
+        for col in df_display.columns:
+            value = row[col]
+            
+            # Format based on column type
+            if col == 'Symbol':
+                cell_html = f'<td style="font-weight: bold; color: #4a9eff; font-size: 14px;">{value}</td>'
+            elif col == 'Company Name':
+                # Truncate long names
+                display_name = str(value)[:40] + '...' if len(str(value)) > 40 else str(value)
+                cell_html = f'<td style="color: #e8e8e8; font-size: 13px;">{display_name}</td>'
+            elif col == 'Market Cap':
+                formatted_val = format_number(value, prefix='$') if pd.notna(value) else '-'
+                cell_html = f'<td style="color: #ffd700; font-weight: 500;">{formatted_val}</td>'
+            elif 'Score' in col:
+                if pd.notna(value):
+                    # Create visual progress bar
+                    color = '#28a745' if value >= 75 else '#ffc107' if value >= 50 else '#dc3545'
+                    bar_width = int(value)
+                    cell_html = f'''
+                    <td>
+                        <div style="display: flex; align-items: center;">
+                            <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 20px; width: 100px; position: relative; overflow: hidden;">
+                                <div style="background: linear-gradient(90deg, {color}, {color}CC); height: 100%; width: {bar_width}%; border-radius: 10px; transition: width 0.3s;"></div>
+                                <span style="position: absolute; left: 50%; transform: translateX(-50%); color: white; font-weight: bold; font-size: 12px; line-height: 20px;">{value:.0f}</span>
+                            </div>
+                        </div>
+                    </td>'''
+                else:
+                    cell_html = '<td>-</td>'
+            elif col == 'PE Ratio':
+                if pd.notna(value):
+                    color = '#28a745' if value < 15 else '#ffc107' if value < 25 else '#dc3545'
+                    cell_html = f'<td style="color: {color}; font-weight: 500;">{value:.2f}</td>'
+                else:
+                    cell_html = '<td>-</td>'
+            elif col == 'ROE':
+                if pd.notna(value):
+                    color = '#28a745' if value > 20 else '#ffc107' if value > 10 else '#dc3545'
+                    cell_html = f'<td style="color: {color}; font-weight: 500;">{value:.1f}%</td>'
+                else:
+                    cell_html = '<td>-</td>'
+            elif 'Growth' in col or 'Return' in col:
+                if pd.notna(value):
+                    color = '#28a745' if value > 0 else '#dc3545'
+                    arrow = '↑' if value > 0 else '↓'
+                    cell_html = f'<td style="color: {color}; font-weight: 500;">{arrow} {abs(value):.1f}%</td>'
+                else:
+                    cell_html = '<td>-</td>'
+            elif col == 'Sector':
+                # Create sector pill
+                sector_colors = {
+                    'Technology': '#6366f1',
+                    'Healthcare': '#14b8a6', 
+                    'Financials': '#f59e0b',
+                    'Consumer Discretionary': '#ec4899',
+                    'Communication Services': '#8b5cf6',
+                    'Industrials': '#6b7280',
+                    'Materials': '#84cc16',
+                    'Energy': '#ef4444',
+                    'Consumer Staples': '#06b6d4',
+                    'Utilities': '#fbbf24',
+                    'Real Estate': '#10b981'
+                }
+                bg_color = sector_colors.get(value, '#6b7280')
+                cell_html = f'''
+                <td>
+                    <span style="background: {bg_color}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; display: inline-block;">
+                        {value}
+                    </span>
+                </td>'''
+            elif any(keyword in col for keyword in ['Margin', 'Yield', 'ROIC', 'ROA']):
+                if pd.notna(value):
+                    cell_html = f'<td style="color: #e8e8e8;">{value:.2f}%</td>'
+                else:
+                    cell_html = '<td>-</td>'
+            else:
+                display_val = str(value) if pd.notna(value) else '-'
+                cell_html = f'<td style="color: #e8e8e8;">{display_val}</td>'
+            
+            row_html += cell_html
+        row_html += "</tr>"
+        html_rows.append(row_html)
+    
+    # Create complete HTML table
+    headers = ''.join([f'<th>{col}</th>' for col in df_display.columns])
+    
+    html_table = f'''
+    <div style="border-radius: 12px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5); background: linear-gradient(145deg, #1a1f2e, #151922);">
+        <style>
+            .beautiful-table {{
+                width: 100%;
+                border-collapse: collapse;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            }}
+            .beautiful-table th {{
+                background: linear-gradient(135deg, #4a9eff 0%, #3a7dd8 100%);
+                color: white;
+                padding: 14px 10px;
+                text-align: left;
+                font-weight: 600;
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border: none;
+            }}
+            .beautiful-table tr {{
+                border-bottom: 1px solid rgba(74, 158, 255, 0.1);
+                transition: all 0.3s ease;
+            }}
+            .beautiful-table tr:hover {{
+                background: rgba(74, 158, 255, 0.08) !important;
+                transform: scale(1.01);
+            }}
+            .beautiful-table td {{
+                padding: 12px 10px;
+                font-size: 13px;
+            }}
+            .beautiful-table tbody tr:nth-child(even) {{
+                background: rgba(74, 158, 255, 0.03);
+            }}
+        </style>
+        <table class="beautiful-table">
+            <thead>
+                <tr>{headers}</tr>
+            </thead>
+            <tbody>
+                {''.join(html_rows)}
+            </tbody>
+        </table>
+    </div>
+    '''
+    
+    return html_table
+
     with tab_results:
         st.markdown(f"### 📊 Resultados del Screener: {selected_screener}")
         
