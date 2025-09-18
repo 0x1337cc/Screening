@@ -5,370 +5,205 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import warnings
-from scipy import stats
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-import warnings
 warnings.filterwarnings('ignore')
 
 # Configuración de página
 st.set_page_config(
-    page_title="BQuant Ultra Screener Pro | @Gsnchez",
-    page_icon="🚀",
+    page_title="BQuant Professional Screener | @Gsnchez",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# CSS Profesional Dark Mode
+# CSS Profesional Minimalista
 professional_css = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
     .stApp {
-        background: linear-gradient(180deg, #0e1117 0%, #1a1d24 100%);
+        background-color: #0e1117;
         font-family: 'Inter', sans-serif;
     }
     
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1c1f26 0%, #262b36 100%);
-        border-right: 2px solid #4a9eff20;
+        background-color: #1c1f26;
+        border-right: 1px solid #2e3139;
+        width: 320px;
+    }
+    
+    h1, h2, h3 {
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
     }
     
     div[data-testid="metric-container"] {
-        background: linear-gradient(135deg, #1c1f26 0%, #262b36 100%);
-        border: 1px solid #4a9eff30;
+        background-color: #1c1f26;
+        border: 1px solid #2e3139;
         padding: 16px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
     }
     
     div[data-testid="metric-container"]:hover {
         border-color: #4a9eff;
-        transform: translateY(-2px);
-        box-shadow: 0 8px 12px rgba(74, 158, 255, 0.2);
     }
     
     .stButton > button {
-        background: linear-gradient(90deg, #4a9eff 0%, #3a8eef 100%);
+        background-color: #4a9eff;
         color: white;
         border: none;
         padding: 10px 24px;
-        border-radius: 8px;
-        font-weight: 600;
-        transition: all 0.3s;
-        box-shadow: 0 4px 6px rgba(74, 158, 255, 0.3);
+        border-radius: 6px;
+        font-weight: 500;
+        transition: all 0.2s;
     }
     
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 12px rgba(74, 158, 255, 0.5);
+        background-color: #3a8eef;
+        transform: translateY(-1px);
     }
     
     .stTabs [data-baseweb="tab"] {
-        padding: 10px 20px;
+        padding: 8px 16px;
         font-weight: 500;
-        color: #b8b8b8;
     }
     
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(90deg, #4a9eff 0%, #3a8eef 100%);
-        color: white;
-        border-radius: 8px 8px 0 0;
+        background-color: #4a9eff;
     }
     
-    h1, h2, h3 {
-        background: linear-gradient(90deg, #ffffff 0%, #b8b8b8 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 600;
+    .streamlit-expanderHeader {
+        background-color: #1c1f26;
+        border: 1px solid #2e3139;
+        border-radius: 6px;
+        font-weight: 500;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        border-color: #4a9eff;
+    }
+    
+    .filter-container {
+        background-color: #1c1f26;
+        border: 1px solid #2e3139;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
     }
     
     .screener-card {
         background: linear-gradient(135deg, #1c1f26 0%, #262b36 100%);
-        border: 1px solid #4a9eff30;
+        border: 1px solid #2e3139;
         border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 16px;
+        padding: 16px;
+        margin-bottom: 12px;
         transition: all 0.3s;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     }
     
     .screener-card:hover {
         border-color: #4a9eff;
         transform: translateX(5px);
-        box-shadow: 0 8px 12px rgba(74, 158, 255, 0.3);
     }
-    
-    .score-badge {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        margin: 2px;
-    }
-    
-    .score-high { background: linear-gradient(90deg, #4caf50, #45a049); color: white; }
-    .score-medium { background: linear-gradient(90deg, #ff9800, #fb8c00); color: white; }
-    .score-low { background: linear-gradient(90deg, #f44336, #e53935); color: white; }
 </style>
 """
 
 st.markdown(professional_css, unsafe_allow_html=True)
 
 # =============================================================================
-# FUNCIONES DE CARGA Y ANÁLISIS AVANZADO
+# FUNCIONES DE CARGA Y UTILIDAD
 # =============================================================================
 
 @st.cache_data(persist="disk", show_spinner=False, ttl=3600)
 def load_and_preprocess_data():
-    """Carga y preprocesa los datos con análisis avanzado"""
+    """Carga y preprocesa los datos con caché persistente"""
     try:
+        # Nombre correcto del archivo
         df = pd.read_csv('screener-stocks-2025-09-18.csv')
         
-        # Convertir porcentajes a números
+        # Convertir columnas de porcentaje de string a float si es necesario
         for col in df.columns:
             if df[col].dtype == 'object':
                 sample = df[col].dropna().head(100)
                 if sample.astype(str).str.contains('%', na=False).any():
                     df[col] = df[col].astype(str).str.replace('%', '').astype(float, errors='ignore')
         
-        # Crear TODOS los scores compuestos
-        df = create_all_composite_scores(df)
-        
-        # Detectar anomalías y oportunidades
-        df = detect_opportunities(df)
-        
-        # Calcular rankings relativos
-        df = calculate_relative_rankings(df)
+        # Crear métricas compuestas
+        df = create_composite_metrics(df)
         
         return df
         
     except FileNotFoundError:
         st.error("❌ **No se encontró el archivo 'screener-stocks-2025-09-18.csv'**")
+        st.info("Por favor, asegúrate de que el archivo CSV esté en el mismo directorio que la aplicación.")
         st.stop()
 
-def create_all_composite_scores(df):
-    """Crea TODOS los scores compuestos y métricas avanzadas"""
+def create_composite_metrics(df):
+    """Crea métricas compuestas y scores avanzados"""
     
-    # 1. QUALITY SCORES DETALLADOS
-    df['Profitability_Score'] = 0
-    for metric in ['ROE', 'ROA', 'ROIC', 'ROCE']:
-        if metric in df.columns:
-            df['Profitability_Score'] += np.where(df[metric] > df[metric].quantile(0.75), 25, 0)
+    # Quality Score (0-100)
+    df['Quality_Score'] = 0
+    if 'ROE' in df.columns:
+        df['Quality_Score'] += np.where(df['ROE'] > df['ROE'].quantile(0.7), 25, 0)
+    if 'ROA' in df.columns:
+        df['Quality_Score'] += np.where(df['ROA'] > df['ROA'].quantile(0.7), 25, 0)
+    if 'ROIC' in df.columns:
+        df['Quality_Score'] += np.where(df['ROIC'] > df['ROIC'].quantile(0.7), 25, 0)
+    if 'Profit Margin' in df.columns:
+        df['Quality_Score'] += np.where(df['Profit Margin'] > df['Profit Margin'].quantile(0.7), 25, 0)
     
-    df['Margin_Score'] = 0
-    for metric in ['Gross Margin', 'Operating Margin', 'Profit Margin', 'FCF Margin']:
-        if metric in df.columns:
-            df['Margin_Score'] += np.where(df[metric] > df[metric].quantile(0.75), 25, 0)
-    
-    df['Efficiency_Score'] = 0
-    if 'Asset Turnover' in df.columns:
-        df['Efficiency_Score'] += np.where(df['Asset Turnover'] > df['Asset Turnover'].quantile(0.7), 33, 0)
-    if 'Inv. Turnover' in df.columns:
-        df['Efficiency_Score'] += np.where(df['Inv. Turnover'] > df['Inv. Turnover'].quantile(0.7), 33, 0)
-    if 'WC Turnover' in df.columns:
-        df['Efficiency_Score'] += np.where(df['WC Turnover'] > df['WC Turnover'].quantile(0.7), 34, 0)
-    
-    # 2. VALUE SCORES AVANZADOS
-    df['Deep_Value_Score'] = 0
+    # Value Score (0-100)
+    df['Value_Score'] = 0
     if 'PE Ratio' in df.columns:
-        df['Deep_Value_Score'] += np.where((df['PE Ratio'] > 0) & (df['PE Ratio'] < 10), 25, 0)
+        df['Value_Score'] += np.where(
+            (df['PE Ratio'] > 0) & (df['PE Ratio'] < df['PE Ratio'].quantile(0.3)), 25, 0)
     if 'PB Ratio' in df.columns:
-        df['Deep_Value_Score'] += np.where(df['PB Ratio'] < 1, 25, 0)
-    if 'P/FCF' in df.columns:
-        df['Deep_Value_Score'] += np.where((df['P/FCF'] > 0) & (df['P/FCF'] < 15), 25, 0)
+        df['Value_Score'] += np.where(df['PB Ratio'] < df['PB Ratio'].quantile(0.3), 25, 0)
+    if 'PS Ratio' in df.columns:
+        df['Value_Score'] += np.where(df['PS Ratio'] < df['PS Ratio'].quantile(0.3), 25, 0)
     if 'EV/EBITDA' in df.columns:
-        df['Deep_Value_Score'] += np.where((df['EV/EBITDA'] > 0) & (df['EV/EBITDA'] < 8), 25, 0)
+        df['Value_Score'] += np.where(
+            (df['EV/EBITDA'] > 0) & (df['EV/EBITDA'] < df['EV/EBITDA'].quantile(0.3)), 25, 0)
     
-    df['Relative_Value_Score'] = 0
-    # Valor relativo al sector
-    if 'PE Ratio' in df.columns and 'Sector' in df.columns:
-        sector_pe = df.groupby('Sector')['PE Ratio'].transform('median')
-        df['PE_vs_Sector'] = df['PE Ratio'] / sector_pe
-        df['Relative_Value_Score'] += np.where(df['PE_vs_Sector'] < 0.8, 50, 0)
-    
-    # 3. GROWTH SCORES DETALLADOS
-    df['Revenue_Growth_Score'] = 0
-    for metric in ['Rev. Growth', 'Rev. Growth 3Y', 'Rev. Growth 5Y', 'Rev Gr. Next Y']:
-        if metric in df.columns:
-            df['Revenue_Growth_Score'] += np.where(df[metric] > 15, 25, 0)
-    
-    df['Earnings_Growth_Score'] = 0
-    for metric in ['EPS Growth', 'EPS Growth 3Y', 'EPS Growth 5Y', 'EPS Gr. Next Y']:
-        if metric in df.columns:
-            df['Earnings_Growth_Score'] += np.where(df[metric] > 15, 25, 0)
-    
-    df['Growth_Consistency_Score'] = 0
-    if 'Rev Growth (Qtrs)' in df.columns:
-        df['Growth_Consistency_Score'] += np.where(df['Rev Growth (Qtrs)'] >= 4, 50, 0)
-    if 'EPS Growth (Qtrs)' in df.columns:
-        df['Growth_Consistency_Score'] += np.where(df['EPS Growth (Qtrs)'] >= 4, 50, 0)
-    
-    # 4. FINANCIAL HEALTH SCORES AVANZADOS
-    df['Liquidity_Score'] = 0
-    for metric in ['Current Ratio', 'Quick Ratio', 'Cash Ratio']:
-        if metric in df.columns:
-            df['Liquidity_Score'] += np.where(df[metric] > 1.5, 33, 0)
-    
-    df['Solvency_Score'] = 0
-    if 'Debt / Equity' in df.columns:
-        df['Solvency_Score'] += np.where(df['Debt / Equity'] < 0.5, 25, 0)
-    if 'Debt / EBITDA' in df.columns:
-        df['Solvency_Score'] += np.where(df['Debt / EBITDA'] < 3, 25, 0)
-    if 'Int. Cov.' in df.columns:
-        df['Solvency_Score'] += np.where(df['Int. Cov.'] > 5, 25, 0)
-    if 'Z-Score' in df.columns:
-        df['Solvency_Score'] += np.where(df['Z-Score'] > 3, 25, 0)
-    
-    # 5. MOMENTUM SCORES DETALLADOS
-    df['Price_Momentum_Score'] = 0
-    momentum_periods = ['Return 1W', 'Return 1M', 'Return 3M', 'Return 6M', 'Return 1Y']
-    for period in momentum_periods:
-        if period in df.columns:
-            df['Price_Momentum_Score'] += np.where(df[period] > 0, 20, 0)
-    
-    df['Volume_Momentum_Score'] = 0
-    if 'Rel. Volume' in df.columns:
-        df['Volume_Momentum_Score'] = np.where(df['Rel. Volume'] > 1.5, 100, 
-                                               np.where(df['Rel. Volume'] > 1, 50, 0))
-    
-    # 6. DIVIDEND SCORES
-    df['Dividend_Quality_Score'] = 0
-    if 'Div. Yield' in df.columns:
-        df['Dividend_Quality_Score'] += np.where((df['Div. Yield'] > 2) & (df['Div. Yield'] < 8), 25, 0)
-    if 'Payout Ratio' in df.columns:
-        df['Dividend_Quality_Score'] += np.where((df['Payout Ratio'] > 0) & (df['Payout Ratio'] < 60), 25, 0)
-    if 'Years' in df.columns:
-        df['Dividend_Quality_Score'] += np.where(df['Years'] > 10, 25, 0)
-    if 'Div. Growth 5Y' in df.columns:
-        df['Dividend_Quality_Score'] += np.where(df['Div. Growth 5Y'] > 5, 25, 0)
-    
-    # 7. INNOVATION & R&D SCORE
-    df['Innovation_Score'] = 0
-    if 'R&D / Rev' in df.columns:
-        df['Innovation_Score'] = np.where(df['R&D / Rev'] > 15, 100,
-                                         np.where(df['R&D / Rev'] > 10, 75,
-                                                np.where(df['R&D / Rev'] > 5, 50, 0)))
-    
-    # 8. INSIDER CONFIDENCE SCORE
-    df['Insider_Score'] = 0
-    if 'Shares Insiders' in df.columns:
-        df['Insider_Score'] += np.where(df['Shares Insiders'] > 10, 50, 0)
-    if 'Shares Institut.' in df.columns:
-        df['Insider_Score'] += np.where((df['Shares Institut.'] > 40) & (df['Shares Institut.'] < 80), 50, 0)
-    
-    # 9. VOLATILITY & RISK SCORES
-    df['Low_Risk_Score'] = 0
-    if 'Beta (5Y)' in df.columns:
-        df['Low_Risk_Score'] += np.where(df['Beta (5Y)'] < 1, 50, 0)
-    if 'ATR' in df.columns:
-        df['Low_Risk_Score'] += np.where(df['ATR'] < df['ATR'].quantile(0.3), 50, 0)
-    
-    # 10. SHORT INTEREST SCORE (para detectar squeezes)
-    df['Short_Squeeze_Score'] = 0
-    if 'Short % Float' in df.columns:
-        df['Short_Squeeze_Score'] = np.where(df['Short % Float'] > 20, 100,
-                                            np.where(df['Short % Float'] > 15, 75,
-                                                   np.where(df['Short % Float'] > 10, 50, 0)))
-    
-    # 11. EARNINGS QUALITY SCORE
-    df['Earnings_Quality_Score'] = 0
-    if 'FCF' in df.columns and 'Net Income' in df.columns:
-        df['FCF_to_NI'] = df['FCF'] / df['Net Income']
-        df['Earnings_Quality_Score'] += np.where(df['FCF_to_NI'] > 0.8, 50, 0)
-    if 'F-Score' in df.columns:
-        df['Earnings_Quality_Score'] += np.where(df['F-Score'] >= 7, 50, 0)
-    
-    # 12. CANSLIM SCORE
-    df['CANSLIM_Score'] = 0
-    if 'EPS Growth' in df.columns:
-        df['CANSLIM_Score'] += np.where(df['EPS Growth'] > 25, 20, 0)  # Current earnings
-    if 'EPS Growth 5Y' in df.columns:
-        df['CANSLIM_Score'] += np.where(df['EPS Growth 5Y'] > 25, 20, 0)  # Annual earnings
-    if 'Return 3M' in df.columns:
-        df['CANSLIM_Score'] += np.where(df['Return 3M'] > 10, 20, 0)  # New highs
-    if 'Shares' in df.columns:
-        df['CANSLIM_Score'] += np.where(df['Shares'] < df['Shares'].quantile(0.3), 20, 0)  # Supply/demand
-    if 'Shares Institut.' in df.columns:
-        df['CANSLIM_Score'] += np.where(df['Shares Institut.'] > 30, 20, 0)  # Institutional
-    
-    # 13. MAGIC FORMULA SCORE (Joel Greenblatt)
-    if 'ROIC' in df.columns and 'PE Ratio' in df.columns:
-        df['Earnings_Yield'] = 1 / df['PE Ratio'].replace(0, np.nan)
-        df['Magic_Rank_ROIC'] = df['ROIC'].rank(ascending=False)
-        df['Magic_Rank_EY'] = df['Earnings_Yield'].rank(ascending=False)
-        df['Magic_Formula_Score'] = 100 - ((df['Magic_Rank_ROIC'] + df['Magic_Rank_EY']) / (2 * len(df)) * 100)
-    
-    # 14. RULE OF 40 SCORE (para growth stocks)
-    df['Rule_of_40_Score'] = 0
-    if 'Rev. Growth' in df.columns and 'FCF Margin' in df.columns:
-        df['Rule_of_40'] = df['Rev. Growth'] + df['FCF Margin']
-        df['Rule_of_40_Score'] = np.where(df['Rule_of_40'] > 40, 100,
-                                         np.where(df['Rule_of_40'] > 30, 75,
-                                                np.where(df['Rule_of_40'] > 20, 50, 0)))
-    
-    # 15. MASTER SCORE SUPREMO (combinación ponderada de TODO)
-    score_columns = [col for col in df.columns if col.endswith('_Score')]
-    if score_columns:
-        df['Ultra_Master_Score'] = df[score_columns].mean(axis=1)
-    
-    return df
-
-def detect_opportunities(df):
-    """Detecta oportunidades especiales y anomalías"""
-    
-    # Detectar Value Traps
-    df['Value_Trap_Risk'] = 0
-    if all(col in df.columns for col in ['PE Ratio', 'Debt / Equity', 'Rev. Growth']):
-        df['Value_Trap_Risk'] = np.where(
-            (df['PE Ratio'] < 10) & (df['Debt / Equity'] > 2) & (df['Rev. Growth'] < -10), 100, 0)
-    
-    # Detectar Hidden Gems
-    df['Hidden_Gem'] = 0
-    if all(col in df.columns for col in ['Market Cap', 'ROE', 'Rev. Growth', 'Shares Institut.']):
-        df['Hidden_Gem'] = np.where(
-            (df['Market Cap'] < 2e9) & (df['ROE'] > 15) & (df['Rev. Growth'] > 20) & 
-            (df['Shares Institut.'] < 30), 100, 0)
-    
-    # Detectar Turnaround Candidates
-    df['Turnaround_Potential'] = 0
-    if all(col in df.columns for col in ['Return 3M', 'Z-Score', 'FCF']):
-        df['Turnaround_Potential'] = np.where(
-            (df['Return 3M'] > 10) & (df['Z-Score'] > 1.8) & (df['FCF'] > 0), 100, 0)
-    
-    # Detectar Dividend Aristocrats
-    df['Dividend_Aristocrat'] = 0
-    if all(col in df.columns for col in ['Years', 'Div. Growth 5Y', 'Payout Ratio']):
-        df['Dividend_Aristocrat'] = np.where(
-            (df['Years'] >= 25) & (df['Div. Growth 5Y'] > 0) & (df['Payout Ratio'] < 70), 100, 0)
-    
-    # Detectar Hypergrowth
-    df['Hypergrowth'] = 0
+    # Growth Score (0-100)
+    df['Growth_Score'] = 0
     if 'Rev. Growth' in df.columns:
-        df['Hypergrowth'] = np.where(df['Rev. Growth'] > 50, 100, 0)
+        df['Growth_Score'] += np.where(df['Rev. Growth'] > 20, 25, 0)
+    if 'EPS Growth' in df.columns:
+        df['Growth_Score'] += np.where(df['EPS Growth'] > 20, 25, 0)
+    if 'Rev Gr. Next Y' in df.columns:
+        df['Growth_Score'] += np.where(df['Rev Gr. Next Y'] > 15, 25, 0)
+    if 'EPS Gr. Next Y' in df.columns:
+        df['Growth_Score'] += np.where(df['EPS Gr. Next Y'] > 15, 25, 0)
     
-    # Detectar Potential Acquisition Targets
-    df['Acquisition_Target'] = 0
-    if all(col in df.columns for col in ['Market Cap', 'FCF', 'Debt / Equity']):
-        df['Acquisition_Target'] = np.where(
-            (df['Market Cap'] < 5e9) & (df['FCF'] > 0) & (df['Debt / Equity'] < 1), 100, 0)
+    # Financial Health Score (0-100)
+    df['Financial_Health_Score'] = 0
+    if 'Current Ratio' in df.columns:
+        df['Financial_Health_Score'] += np.where(df['Current Ratio'] > 1.5, 25, 0)
+    if 'Debt / Equity' in df.columns:
+        df['Financial_Health_Score'] += np.where(df['Debt / Equity'] < 1, 25, 0)
+    if 'Z-Score' in df.columns:
+        df['Financial_Health_Score'] += np.where(df['Z-Score'] > 3, 25, 0)
+    if 'FCF Yield' in df.columns:
+        df['Financial_Health_Score'] += np.where(df['FCF Yield'] > 5, 25, 0)
     
-    return df
-
-def calculate_relative_rankings(df):
-    """Calcula rankings relativos por sector e industria"""
+    # Momentum Score (0-100)
+    df['Momentum_Score'] = 0
+    if 'Return 1Y' in df.columns:
+        df['Momentum_Score'] += np.where(df['Return 1Y'] > df['Return 1Y'].quantile(0.7), 30, 0)
+    if 'Return 3M' in df.columns:
+        df['Momentum_Score'] += np.where(df['Return 3M'] > 0, 20, 0)
+    if 'Return 1M' in df.columns:
+        df['Momentum_Score'] += np.where(df['Return 1M'] > 0, 20, 0)
+    if 'RSI' in df.columns:
+        df['Momentum_Score'] += np.where((df['RSI'] > 50) & (df['RSI'] < 70), 30, 0)
     
-    # Rankings por sector
-    if 'Sector' in df.columns:
-        for metric in ['ROE', 'Rev. Growth', 'PE Ratio', 'Market Cap']:
-            if metric in df.columns:
-                df[f'{metric}_Sector_Rank'] = df.groupby('Sector')[metric].rank(pct=True) * 100
-    
-    # Rankings globales
-    for metric in ['Ultra_Master_Score', 'Market Cap', 'ROE', 'Rev. Growth']:
-        if metric in df.columns:
-            df[f'{metric}_Global_Rank'] = df[metric].rank(pct=True) * 100
+    # Composite Master Score
+    df['Master_Score'] = (
+        df['Quality_Score'] * 0.3 +
+        df['Value_Score'] * 0.25 +
+        df['Growth_Score'] * 0.2 +
+        df['Financial_Health_Score'] * 0.15 +
+        df['Momentum_Score'] * 0.1
+    )
     
     return df
 
@@ -406,651 +241,1053 @@ def parse_market_cap(value_str):
         return None
 
 # =============================================================================
-# SCREENERS ULTRA AVANZADOS
+# SCREENERS PROFESIONALES
 # =============================================================================
 
-ULTRA_SCREENERS = {
-    "🎯 Constructor Universal": {
-        "name": "Constructor Universal",
-        "description": "Acceso a TODAS las 230+ métricas y scores",
-        "category": "custom",
+SCREENERS = {
+    "🎯 Constructor Personalizado": {
+        "description": "Construye tu propio screener con filtros personalizados",
         "filters": {}
     },
     
-    # ESTRATEGIAS VALUE AVANZADAS
+    # VALUE INVESTING
     "💎 Deep Value Contrarian": {
-        "name": "Deep Value Contrarian",
-        "description": "Empresas extremadamente infravaloradas con catalizadores - P/B < 0.7, FCF positivo, insider buying",
-        "category": "value",
+        "description": "Empresas extremadamente infravaloradas con catalizadores (P/B < 1, P/E < 10, FCF positivo)",
         "filters": {
-            "pb_max": 0.7,
-            "pe_max": 8,
-            "fcf_min": 0,
-            "insider_score_min": 50,
-            "deep_value_score_min": 75
+            "pb_max": 1.0,
+            "pe_max": 10.0,
+            "pe_min": 0.1,
+            "fcf_yield_min": 5.0,
+            "current_ratio_min": 1.5,
+            "value_score_min": 70
         }
     },
     
-    "🏦 Benjamin Graham Net-Net": {
-        "name": "Graham Net-Net",
-        "description": "Trading por debajo del valor de liquidación - P/B < 0.66, Current Ratio > 2",
-        "category": "value",
+    "🏦 Graham Net-Net": {
+        "description": "Trading por debajo del valor de liquidación (P/B < 0.66, Current Ratio > 2)",
         "filters": {
             "pb_max": 0.66,
-            "current_ratio_min": 2,
+            "current_ratio_min": 2.0,
             "z_score_min": 1.8,
-            "deep_value_score_min": 80
+            "debt_equity_max": 0.5,
+            "value_score_min": 80
         }
     },
     
-    # ESTRATEGIAS GROWTH AVANZADAS
-    "🚀 Hypergrowth SaaS": {
-        "name": "Hypergrowth SaaS",
-        "description": "Rule of 40 > 40%, Gross Margin > 70%, Rev Growth > 30%",
-        "category": "growth",
+    # GROWTH INVESTING
+    "🚀 Hypergrowth Tech": {
+        "description": "Crecimiento explosivo con márgenes altos (Rev > 30%, Gross Margin > 60%)",
         "filters": {
-            "rule_of_40_score_min": 75,
-            "gross_margin_min": 70,
-            "rev_growth_min": 30,
-            "revenue_growth_score_min": 80
+            "rev_growth_min": 30.0,
+            "gross_margin_min": 60.0,
+            "sectors": ["Technology", "Communication Services"],
+            "growth_score_min": 70
         }
     },
     
-    "⚡ Earnings Acceleration": {
-        "name": "Earnings Acceleration",
-        "description": "EPS acelerando trimestre a trimestre, sorpresas positivas",
-        "category": "growth",
+    "⚡ GARP Excellence": {
+        "description": "Crecimiento a precio razonable con calidad (PEG < 1, ROE > 15%, EPS Growth > 15%)",
         "filters": {
-            "eps_growth_min": 20,
-            "earnings_growth_score_min": 75,
-            "growth_consistency_score_min": 75,
-            "canslim_score_min": 60
+            "peg_max": 1.0,
+            "peg_min": 0.1,
+            "eps_growth_min": 15.0,
+            "roe_min": 15.0,
+            "debt_equity_max": 1.0,
+            "profit_margin_min": 10.0
         }
     },
     
-    # ESTRATEGIAS MOMENTUM
-    "📈 Institutional Accumulation": {
-        "name": "Institutional Accumulation",
-        "description": "Fuerte compra institucional + momentum técnico",
-        "category": "momentum",
+    # DIVIDEND & INCOME
+    "💰 Dividend Aristocrats": {
+        "description": "25+ años de dividendos crecientes con sostenibilidad (Yield > 2.5%, Payout < 70%)",
         "filters": {
-            "institutional_ownership_min": 40,
-            "institutional_ownership_max": 80,
-            "price_momentum_score_min": 70,
-            "volume_momentum_score_min": 50,
-            "rsi_min": 50,
-            "rsi_max": 70
+            "years_min": 25,
+            "div_yield_min": 2.5,
+            "div_yield_max": 8.0,
+            "payout_ratio_max": 70.0,
+            "fcf_payout_ratio_max": 60.0,
+            "market_cap_min": 10e9
         }
     },
     
-    "🎢 Short Squeeze Candidates": {
-        "name": "Short Squeeze Setup",
-        "description": "Alto short interest + momentum positivo = potential squeeze",
-        "category": "momentum",
+    "🏆 High Yield Quality": {
+        "description": "Alto rendimiento con seguridad (Yield > 4%, FCF coverage, Z-Score > 3)",
         "filters": {
-            "short_squeeze_score_min": 75,
-            "return_1m_min": 5,
-            "volume_momentum_score_min": 50,
-            "rsi_min": 45,
-            "rsi_max": 65
+            "div_yield_min": 4.0,
+            "div_yield_max": 10.0,
+            "payout_ratio_max": 80.0,
+            "z_score_min": 3.0,
+            "current_ratio_min": 1.5,
+            "financial_health_score_min": 60
         }
     },
     
-    # ESTRATEGIAS QUALITY
-    "🏆 Competitive Advantage": {
-        "name": "Moat Companies",
-        "description": "ROE > 20% sostenido, márgenes superiores al sector",
-        "category": "quality",
+    # QUALITY COMPANIES
+    "👑 Quality Compounders": {
+        "description": "Empresas de calidad excepcional (ROE > 20%, FCF Yield > 5%, Debt/Eq < 0.5)",
         "filters": {
-            "roe_min": 20,
-            "profitability_score_min": 80,
-            "margin_score_min": 75,
-            "earnings_quality_score_min": 70
+            "roe_min": 20.0,
+            "roic_min": 15.0,
+            "fcf_yield_min": 5.0,
+            "debt_equity_max": 0.5,
+            "profit_margin_min": 15.0,
+            "quality_score_min": 80
         }
     },
     
-    "💰 Cash Flow Machines": {
-        "name": "FCF Generators",
-        "description": "FCF Yield > 8%, FCF/NI > 0.9, crecimiento de FCF",
-        "category": "quality",
+    "🛡️ Defensive Fortress": {
+        "description": "Baja volatilidad con fundamentos sólidos (Beta < 0.8, Margin > 15%, Dividend)",
         "filters": {
-            "fcf_yield_min": 8,
-            "earnings_quality_score_min": 80,
-            "fcf_margin_min": 15,
-            "solvency_score_min": 75
+            "beta_max": 0.8,
+            "profit_margin_min": 15.0,
+            "div_yield_min": 2.0,
+            "current_ratio_min": 1.5,
+            "sectors": ["Consumer Staples", "Healthcare", "Utilities"]
         }
     },
     
-    # ESTRATEGIAS INCOME
-    "👑 Dividend Aristocrats Plus": {
-        "name": "Dividend Excellence",
-        "description": "25+ años dividendos, crecimiento sostenible, FCF coverage",
-        "category": "income",
+    # MOMENTUM & TECHNICAL
+    "📈 Momentum Leaders": {
+        "description": "Fuerte momentum con volumen (RSI 50-70, Return 1Y > 20%, Vol > avg)",
         "filters": {
-            "dividend_aristocrat": 100,
-            "dividend_quality_score_min": 80,
-            "financial_health_score_min": 70
+            "rsi_min": 50.0,
+            "rsi_max": 70.0,
+            "return_1y_min": 20.0,
+            "return_3m_min": 10.0,
+            "rel_volume_min": 1.2,
+            "momentum_score_min": 70
         }
     },
     
-    "💵 High Yield Safe": {
-        "name": "Safe High Yield",
-        "description": "Yield > 5% pero con cobertura de FCF y bajo payout",
-        "category": "income",
+    "🔥 Breakout Candidates": {
+        "description": "Cerca de máximos con momentum (Dist. 52W High < 10%, RSI > 55)",
         "filters": {
-            "div_yield_min": 5,
-            "div_yield_max": 10,
-            "payout_ratio_max": 60,
-            "fcf_payout_max": 50,
-            "solvency_score_min": 70
+            "distance_52w_high_max": 10.0,
+            "rsi_min": 55.0,
+            "rsi_max": 75.0,
+            "return_1m_min": 5.0,
+            "volume_ratio_min": 1.5
         }
     },
     
-    # ESTRATEGIAS ESPECIALES
-    "🔬 Innovation Leaders": {
-        "name": "R&D Champions",
-        "description": "Alto R&D/Sales, crecimiento, sector tech/healthcare",
-        "category": "thematic",
+    # SPECIAL SITUATIONS
+    "🔄 Turnaround Stories": {
+        "description": "Empresas en recuperación con señales positivas (Z-Score > 1.8, FCF positivo)",
         "filters": {
-            "innovation_score_min": 75,
-            "rev_growth_min": 15,
-            "sectors": ["Technology", "Healthcare"],
-            "gross_margin_min": 50
+            "z_score_min": 1.8,
+            "z_score_max": 3.0,
+            "fcf_min": 0.0,
+            "return_3m_min": 10.0,
+            "rsi_min": 40.0,
+            "rsi_max": 60.0
         }
     },
     
-    "🎯 Hidden Gems Finder": {
-        "name": "Undiscovered Value",
-        "description": "Small caps ignorados con métricas excepcionales",
-        "category": "special",
+    "💎 Small Cap Gems": {
+        "description": "Pequeña capitalización con métricas excepcionales ($200M-$2B, ROE > 15%)",
         "filters": {
-            "hidden_gem": 100,
+            "market_cap_min": 200e6,
             "market_cap_max": 2e9,
-            "institutional_ownership_max": 30,
-            "ultra_master_score_min": 70
+            "roe_min": 15.0,
+            "rev_growth_min": 15.0,
+            "insider_ownership_min": 5.0,
+            "master_score_min": 60
         }
     },
     
-    "🔄 Turnaround Plays": {
-        "name": "Recovery Stories",
-        "description": "Empresas saliendo de problemas con señales positivas",
-        "category": "special",
+    # FACTOR MODELS
+    "🎯 Multi-Factor Quant": {
+        "description": "Modelo cuantitativo con 5 factores: Value + Quality + Growth + Momentum + Low Risk",
         "filters": {
-            "turnaround_potential": 100,
-            "z_score_min": 1.8,
-            "return_3m_min": 10,
-            "fcf_min": 0
+            "value_score_min": 60,
+            "quality_score_min": 60,
+            "growth_score_min": 60,
+            "momentum_score_min": 60,
+            "beta_max": 1.5,
+            "master_score_min": 70
         }
     },
     
-    "🏦 M&A Targets": {
-        "name": "Acquisition Candidates",
-        "description": "Potenciales objetivos de adquisición",
-        "category": "special",
+    "📊 Magic Formula Plus": {
+        "description": "Joel Greenblatt mejorado: Earnings Yield alto + ROIC alto + Momentum",
         "filters": {
-            "acquisition_target": 100,
-            "market_cap_max": 5e9,
-            "fcf_min": 0,
-            "debt_equity_max": 1
+            "earnings_yield_min": 10.0,
+            "roic_min": 20.0,
+            "return_6m_min": 0.0,
+            "debt_equity_max": 1.0,
+            "market_cap_min": 50e6
         }
     },
     
-    # FACTOR INVESTING
-    "📊 Multi-Factor Quant": {
-        "name": "5-Factor Model",
-        "description": "Combina Value + Quality + Growth + Momentum + Low Risk",
-        "category": "quant",
+    "🌟 CANSLIM Screener": {
+        "description": "William O'Neil: EPS +25%, Rev +20%, New highs, Inst. ownership",
         "filters": {
-            "deep_value_score_min": 60,
-            "profitability_score_min": 60,
-            "revenue_growth_score_min": 60,
-            "price_momentum_score_min": 60,
-            "low_risk_score_min": 60
-        }
-    },
-    
-    "🎲 Magic Formula Enhanced": {
-        "name": "Greenblatt Plus",
-        "description": "Magic Formula mejorada con quality y momentum",
-        "category": "quant",
-        "filters": {
-            "magic_formula_score_min": 80,
-            "earnings_quality_score_min": 60,
-            "price_momentum_score_min": 50
-        }
-    },
-    
-    "🌟 CANSLIM Algorithm": {
-        "name": "O'Neil CANSLIM",
-        "description": "Sistema completo CAN-SLIM de William O'Neil",
-        "category": "quant",
-        "filters": {
-            "canslim_score_min": 80,
-            "price_momentum_score_min": 70,
-            "volume_momentum_score_min": 50,
-            "institutional_ownership_min": 30
+            "eps_growth_min": 25.0,
+            "rev_growth_min": 20.0,
+            "distance_52w_high_max": 15.0,
+            "institutional_ownership_min": 30.0,
+            "institutional_ownership_max": 80.0,
+            "rsi_min": 50.0
         }
     }
 }
 
 # =============================================================================
-# INICIALIZACIÓN
+# INICIALIZACIÓN Y CARGA DE DATOS
 # =============================================================================
 
+# Inicializar estado de sesión
 if 'filters_applied' not in st.session_state:
     st.session_state.filters_applied = False
-if 'selected_stocks' not in st.session_state:
-    st.session_state.selected_stocks = []
-if 'comparison_mode' not in st.session_state:
-    st.session_state.comparison_mode = False
-if 'advanced_mode' not in st.session_state:
-    st.session_state.advanced_mode = False
+
+if 'selected_screener' not in st.session_state:
+    st.session_state.selected_screener = "🎯 Constructor Personalizado"
 
 # Cargar datos
-with st.spinner("🚀 Cargando base de datos con 230+ métricas..."):
+with st.spinner("Cargando base de datos de 5,500+ acciones..."):
     df = load_and_preprocess_data()
 
 # =============================================================================
-# HEADER
+# HEADER PRINCIPAL
 # =============================================================================
 
 st.markdown("""
-<div style='text-align: center; padding: 30px 0; background: linear-gradient(135deg, #1c1f26 0%, #262b36 100%); 
-            border-radius: 20px; margin-bottom: 30px; border: 2px solid #4a9eff30;'>
-    <h1 style='margin: 0; font-size: 2.5em;'>🚀 BQuant Ultra Screener Pro</h1>
-    <p style='color: #b8b8b8; margin-top: 10px; font-size: 1.2em;'>
-        Sistema profesional con <strong>230+ métricas</strong> | <strong>20+ scores algorítmicos</strong> | <strong>ML insights</strong>
+<div style='text-align: center; padding: 20px 0; border-bottom: 1px solid #2e3139;'>
+    <h1 style='margin: 0; color: #ffffff;'>📊 BQuant Professional Stock Screener</h1>
+    <p style='color: #b8b8b8; margin-top: 10px; font-size: 1.1em;'>
+        Análisis avanzado de 5,500+ acciones con 230+ métricas
     </p>
-    <p style='color: #4a9eff; margin-top: 10px;'>
-        <strong>@Gsnchez</strong> | <strong>bquantfinance.com</strong>
+    <p style='color: #4a9eff; margin-top: 5px;'>
+        Desarrollado por <strong>@Gsnchez</strong> | <strong>bquantfinance.com</strong>
     </p>
 </div>
 """, unsafe_allow_html=True)
 
-# Quick Stats
-col1, col2, col3, col4, col5, col6 = st.columns(6)
-with col1:
-    st.metric("📊 Acciones", f"{len(df):,}")
-with col2:
-    st.metric("📈 Métricas", "230+")
-with col3:
-    st.metric("🎯 Scores", "20+")
-with col4:
-    st.metric("💎 Value Ops", len(df[df['Deep_Value_Score'] > 80]) if 'Deep_Value_Score' in df.columns else 0)
-with col5:
-    st.metric("🚀 Growth Ops", len(df[df['Revenue_Growth_Score'] > 80]) if 'Revenue_Growth_Score' in df.columns else 0)
-with col6:
-    st.metric("🔥 Hot Stocks", len(df[df['Price_Momentum_Score'] > 80]) if 'Price_Momentum_Score' in df.columns else 0)
-
 # =============================================================================
-# SIDEBAR
+# SIDEBAR - SELECTOR DE SCREENER Y FILTROS BÁSICOS
 # =============================================================================
 
-st.sidebar.markdown("# ⚡ Ultra Screener Control")
+st.sidebar.markdown("# 🎯 Screener Selector")
 st.sidebar.markdown("---")
 
-# Modo de operación
-operation_mode = st.sidebar.radio(
-    "🎮 Modo de Operación",
-    ["🎯 Screeners Predefinidos", "🔬 Constructor Avanzado", "🤖 ML Discovery", "📊 Factor Analysis"],
-    help="Elige tu modo de análisis"
+# Selector de Screener
+selected_screener = st.sidebar.selectbox(
+    "📋 **Selecciona un Screener**",
+    options=list(SCREENERS.keys()),
+    index=list(SCREENERS.keys()).index(st.session_state.selected_screener),
+    help="Elige un screener predefinido o construye el tuyo"
 )
 
-if operation_mode == "🎯 Screeners Predefinidos":
-    # Categorías de screeners
-    categories = list(set([s['category'] for s in ULTRA_SCREENERS.values()]))
-    selected_category = st.sidebar.selectbox("📁 Categoría", categories)
-    
-    # Filtrar screeners por categoría
-    category_screeners = {k: v for k, v in ULTRA_SCREENERS.items() if v['category'] == selected_category}
-    
-    selected_screener = st.sidebar.selectbox(
-        "🎯 Screener",
-        options=list(category_screeners.keys())
-    )
-    
-    screener_config = ULTRA_SCREENERS[selected_screener]
-    
-    # Mostrar descripción
-    st.sidebar.info(f"📝 {screener_config['description']}")
-    
-    # Aplicar filtros del screener
-    preset_filters = screener_config['filters']
+st.session_state.selected_screener = selected_screener
 
-elif operation_mode == "🔬 Constructor Avanzado":
-    st.sidebar.info("Construye tu screener con acceso total a 230+ métricas")
-    preset_filters = {}
-    selected_screener = "Constructor Avanzado"
+# Información del screener
+screener_config = SCREENERS[selected_screener]
+st.sidebar.info(f"📝 {screener_config['description']}")
 
-elif operation_mode == "🤖 ML Discovery":
-    st.sidebar.info("Descubrimiento automático de oportunidades con Machine Learning")
-    preset_filters = {}
-    selected_screener = "ML Discovery"
-
-else:  # Factor Analysis
-    st.sidebar.info("Análisis factorial y construcción de portfolios")
-    preset_filters = {}
-    selected_screener = "Factor Analysis"
-
-# Filtros básicos siempre visibles
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 🔍 Filtros Rápidos")
 
+# FILTROS BÁSICOS EN SIDEBAR
+st.sidebar.markdown("### 🔍 Filtros Básicos")
+
+# Búsqueda
 search_term = st.sidebar.text_input("🔎 Buscar", placeholder="Ticker o nombre...")
 
-col1, col2 = st.sidebar.columns(2)
-with col1:
-    min_mcap = st.text_input("MCap Min", placeholder="1B")
-with col2:
-    max_mcap = st.text_input("MCap Max", placeholder="100B")
-
-sectors = st.sidebar.multiselect(
+# Sectores
+sectors_filter = st.sidebar.multiselect(
     "🏢 Sectores",
     options=sorted(df['Sector'].dropna().unique()),
-    default=preset_filters.get('sectors', [])
+    default=screener_config['filters'].get('sectors', [])
 )
 
-# Botón aplicar
+# Market Cap
+st.sidebar.markdown("**💰 Market Cap**")
+col1, col2 = st.sidebar.columns(2)
+with col1:
+    min_mcap = st.text_input(
+        "Min",
+        value=f"{int(screener_config['filters'].get('market_cap_min', 0)/1e6)}M" if screener_config['filters'].get('market_cap_min', 0) > 0 else "",
+        placeholder="100M"
+    )
+with col2:
+    max_mcap = st.text_input(
+        "Max",
+        value=f"{int(screener_config['filters'].get('market_cap_max', 0)/1e9)}B" if screener_config['filters'].get('market_cap_max', 0) > 0 else "",
+        placeholder="10B"
+    )
+
+# Exchanges
+exchanges = st.sidebar.multiselect(
+    "🏛️ Exchanges",
+    options=sorted(df['Exchange'].dropna().unique()) if 'Exchange' in df.columns else [],
+    default=[]
+)
+
+# Índices
+if 'In Index' in df.columns:
+    in_index = st.sidebar.multiselect(
+        "📈 Índices",
+        ["SP500", "NASDAQ100", "DOW30"],
+        default=[]
+    )
+else:
+    in_index = []
+
 st.sidebar.markdown("---")
-if st.sidebar.button("⚡ **EJECUTAR ANÁLISIS**", type="primary", use_container_width=True):
+
+# Botón de aplicar filtros básicos
+apply_basic = st.sidebar.button("🔍 **APLICAR FILTROS**", type="primary", use_container_width=True)
+
+if apply_basic:
     st.session_state.filters_applied = True
 
 # =============================================================================
-# ÁREA PRINCIPAL
+# ÁREA PRINCIPAL - FILTROS AVANZADOS Y RESULTADOS
 # =============================================================================
 
-# Tabs principales
-if operation_mode == "🎯 Screeners Predefinidos":
-    tabs = st.tabs([
-        "📊 Resultados", 
-        "📈 Analytics", 
-        "🎯 Scores", 
-        "🔥 Heatmaps",
-        "📋 Comparador",
-        "💾 Export"
-    ])
-elif operation_mode == "🔬 Constructor Avanzado":
-    tabs = st.tabs([
-        "⚙️ Constructor",
-        "📊 Resultados",
-        "📈 Analytics",
-        "💾 Export"
-    ])
-elif operation_mode == "🤖 ML Discovery":
-    tabs = st.tabs([
-        "🤖 ML Analysis",
-        "🎯 Anomalías",
-        "📊 Clusters",
-        "🔮 Predicciones"
-    ])
-else:  # Factor Analysis
-    tabs = st.tabs([
-        "📊 Factores",
-        "🎯 Portfolio",
-        "📈 Backtest",
-        "⚖️ Optimización"
-    ])
+# Crear pestañas para organizar el contenido
+tab_filters, tab_results, tab_analysis, tab_rankings, tab_sector, tab_export = st.tabs([
+    "⚙️ Filtros Avanzados", 
+    "📊 Resultados", 
+    "📈 Análisis Visual",
+    "🏆 Rankings",
+    "🎯 Análisis Sectorial",
+    "💾 Exportar"
+])
 
 # =============================================================================
-# CONTENIDO DE TABS SEGÚN MODO
+# TAB 1: FILTROS AVANZADOS
 # =============================================================================
 
-if operation_mode == "🎯 Screeners Predefinidos":
+with tab_filters:
+    st.markdown("### ⚙️ Constructor de Filtros Avanzados")
+    st.info("💡 Ajusta los filtros para refinar tu búsqueda. Los valores predeterminados corresponden al screener seleccionado.")
     
-    # Aplicar filtros
-    if st.session_state.filters_applied:
-        filtered_df = df.copy()
+    # Obtener filtros del screener seleccionado
+    preset_filters = screener_config.get('filters', {})
+    
+    # Organizar filtros en columnas
+    st.markdown("---")
+    st.markdown("#### 📊 Métricas de Valoración")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        pe_min = st.number_input("P/E Min", value=float(preset_filters.get('pe_min', 0.0)), min_value=0.0, key="pe_min_filter")
+        pb_min = st.number_input("P/B Min", value=float(preset_filters.get('pb_min', 0.0)), min_value=0.0, key="pb_min_filter")
+        ps_min = st.number_input("P/S Min", value=float(preset_filters.get('ps_min', 0.0)), min_value=0.0, key="ps_min_filter")
+    
+    with col2:
+        pe_max = st.number_input("P/E Max", value=float(preset_filters.get('pe_max', 100.0)), min_value=0.0, key="pe_max_filter")
+        pb_max = st.number_input("P/B Max", value=float(preset_filters.get('pb_max', 10.0)), min_value=0.0, key="pb_max_filter")
+        ps_max = st.number_input("P/S Max", value=float(preset_filters.get('ps_max', 20.0)), min_value=0.0, key="ps_max_filter")
+    
+    with col3:
+        peg_min = st.number_input("PEG Min", value=float(preset_filters.get('peg_min', 0.0)), min_value=0.0, key="peg_min_filter")
+        ev_ebitda_min = st.number_input("EV/EBITDA Min", value=float(preset_filters.get('ev_ebitda_min', 0.0)), min_value=0.0, key="ev_ebitda_min_filter")
+        pcf_min = st.number_input("P/CF Min", value=float(preset_filters.get('pcf_min', 0.0)), min_value=0.0, key="pcf_min_filter")
+    
+    with col4:
+        peg_max = st.number_input("PEG Max", value=float(preset_filters.get('peg_max', 3.0)), min_value=0.0, key="peg_max_filter")
+        ev_ebitda_max = st.number_input("EV/EBITDA Max", value=float(preset_filters.get('ev_ebitda_max', 50.0)), min_value=0.0, key="ev_ebitda_max_filter")
+        pcf_max = st.number_input("P/CF Max", value=float(preset_filters.get('pcf_max', 50.0)), min_value=0.0, key="pcf_max_filter")
+    
+    st.markdown("---")
+    st.markdown("#### 📈 Métricas de Crecimiento")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        rev_growth_min = st.number_input("Revenue Growth Min %", value=float(preset_filters.get('rev_growth_min', -100.0)), key="rev_growth_filter")
+        eps_growth_min = st.number_input("EPS Growth Min %", value=float(preset_filters.get('eps_growth_min', -100.0)), key="eps_growth_filter")
+        fcf_growth_min = st.number_input("FCF Growth Min %", value=float(preset_filters.get('fcf_growth_min', -100.0)), key="fcf_growth_filter")
+    
+    with col2:
+        rev_growth_max = st.number_input("Revenue Growth Max %", value=float(preset_filters.get('rev_growth_max', 500.0)), key="rev_growth_max_filter")
+        eps_growth_max = st.number_input("EPS Growth Max %", value=float(preset_filters.get('eps_growth_max', 500.0)), key="eps_growth_max_filter")
+        rev_growth_3y_min = st.number_input("Rev CAGR 3Y Min %", value=float(preset_filters.get('rev_growth_3y_min', -100.0)), key="rev_3y_filter")
+    
+    with col3:
+        rev_growth_5y_min = st.number_input("Rev CAGR 5Y Min %", value=float(preset_filters.get('rev_growth_5y_min', -100.0)), key="rev_5y_filter")
+        eps_growth_3y_min = st.number_input("EPS CAGR 3Y Min %", value=float(preset_filters.get('eps_growth_3y_min', -100.0)), key="eps_3y_filter")
+        eps_growth_5y_min = st.number_input("EPS CAGR 5Y Min %", value=float(preset_filters.get('eps_growth_5y_min', -100.0)), key="eps_5y_filter")
+    
+    with col4:
+        rev_growth_next_min = st.number_input("Rev Growth Next Y Min %", value=float(preset_filters.get('rev_growth_next_min', -100.0)), key="rev_next_filter")
+        eps_growth_next_min = st.number_input("EPS Growth Next Y Min %", value=float(preset_filters.get('eps_growth_next_min', -100.0)), key="eps_next_filter")
+        earnings_yield_min = st.number_input("Earnings Yield Min %", value=float(preset_filters.get('earnings_yield_min', 0.0)), key="ey_filter")
+    
+    st.markdown("---")
+    st.markdown("#### 💎 Rentabilidad y Márgenes")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        roe_min = st.number_input("ROE Min %", value=float(preset_filters.get('roe_min', -50.0)), key="roe_filter")
+        roa_min = st.number_input("ROA Min %", value=float(preset_filters.get('roa_min', -50.0)), key="roa_filter")
+        roic_min = st.number_input("ROIC Min %", value=float(preset_filters.get('roic_min', -50.0)), key="roic_filter")
+    
+    with col2:
+        roe_max = st.number_input("ROE Max %", value=float(preset_filters.get('roe_max', 100.0)), key="roe_max_filter")
+        roa_max = st.number_input("ROA Max %", value=float(preset_filters.get('roa_max', 100.0)), key="roa_max_filter")
+        roce_min = st.number_input("ROCE Min %", value=float(preset_filters.get('roce_min', -50.0)), key="roce_filter")
+    
+    with col3:
+        profit_margin_min = st.number_input("Profit Margin Min %", value=float(preset_filters.get('profit_margin_min', -100.0)), key="pm_filter")
+        gross_margin_min = st.number_input("Gross Margin Min %", value=float(preset_filters.get('gross_margin_min', 0.0)), key="gm_filter")
+        operating_margin_min = st.number_input("Operating Margin Min %", value=float(preset_filters.get('operating_margin_min', -100.0)), key="om_filter")
+    
+    with col4:
+        fcf_margin_min = st.number_input("FCF Margin Min %", value=float(preset_filters.get('fcf_margin_min', -100.0)), key="fcfm_filter")
+        ebitda_margin_min = st.number_input("EBITDA Margin Min %", value=float(preset_filters.get('ebitda_margin_min', -100.0)), key="ebitdam_filter")
+        ebit_margin_min = st.number_input("EBIT Margin Min %", value=float(preset_filters.get('ebit_margin_min', -100.0)), key="ebitm_filter")
+    
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### 💵 Dividendos")
+        col1a, col1b = st.columns(2)
+        with col1a:
+            div_yield_min = st.number_input("Dividend Yield Min %", value=float(preset_filters.get('div_yield_min', 0.0)), key="div_min_filter")
+            payout_ratio_min = st.number_input("Payout Ratio Min %", value=float(preset_filters.get('payout_ratio_min', 0.0)), key="payout_min_filter")
+            years_min = st.number_input("Years of Dividends Min", value=preset_filters.get('years_min', 0), min_value=0, key="years_filter")
+        with col1b:
+            div_yield_max = st.number_input("Dividend Yield Max %", value=float(preset_filters.get('div_yield_max', 20.0)), key="div_max_filter")
+            payout_ratio_max = st.number_input("Payout Ratio Max %", value=float(preset_filters.get('payout_ratio_max', 100.0)), key="payout_max_filter")
+            fcf_payout_ratio_max = st.number_input("FCF Payout Max %", value=float(preset_filters.get('fcf_payout_ratio_max', 100.0)), key="fcf_payout_filter")
+    
+    with col2:
+        st.markdown("#### 🏥 Salud Financiera")
+        col2a, col2b = st.columns(2)
+        with col2a:
+            current_ratio_min = st.number_input("Current Ratio Min", value=float(preset_filters.get('current_ratio_min', 0.0)), key="cr_filter")
+            debt_equity_max = st.number_input("Debt/Equity Max", value=float(preset_filters.get('debt_equity_max', 10.0)), key="de_filter")
+            z_score_min = st.number_input("Altman Z-Score Min", value=float(preset_filters.get('z_score_min', -5.0)), key="z_filter")
+        with col2b:
+            quick_ratio_min = st.number_input("Quick Ratio Min", value=float(preset_filters.get('quick_ratio_min', 0.0)), key="qr_filter")
+            interest_coverage_min = st.number_input("Interest Coverage Min", value=float(preset_filters.get('interest_coverage_min', 0.0)), key="ic_filter")
+            f_score_min = st.number_input("Piotroski F-Score Min", value=preset_filters.get('f_score_min', 0), min_value=0, max_value=9, key="f_filter")
+    
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### 📉 Indicadores Técnicos")
+        col1a, col1b = st.columns(2)
+        with col1a:
+            rsi_min = st.number_input("RSI Min", value=float(preset_filters.get('rsi_min', 0.0)), min_value=0.0, max_value=100.0, key="rsi_min_filter")
+            beta_min = st.number_input("Beta Min", value=float(preset_filters.get('beta_min', 0.0)), min_value=0.0, key="beta_min_filter")
+            rel_volume_min = st.number_input("Relative Volume Min", value=float(preset_filters.get('rel_volume_min', 0.0)), key="rv_filter")
+        with col1b:
+            rsi_max = st.number_input("RSI Max", value=float(preset_filters.get('rsi_max', 100.0)), min_value=0.0, max_value=100.0, key="rsi_max_filter")
+            beta_max = st.number_input("Beta Max", value=float(preset_filters.get('beta_max', 5.0)), min_value=0.0, key="beta_max_filter")
+            volume_ratio_min = st.number_input("Volume/Avg Min", value=float(preset_filters.get('volume_ratio_min', 0.0)), key="vr_filter")
+    
+    with col2:
+        st.markdown("#### 📊 Retornos")
+        col2a, col2b = st.columns(2)
+        with col2a:
+            return_1y_min = st.number_input("Return 1Y Min %", value=float(preset_filters.get('return_1y_min', -100.0)), key="r1y_filter")
+            return_6m_min = st.number_input("Return 6M Min %", value=float(preset_filters.get('return_6m_min', -100.0)), key="r6m_filter")
+            return_3m_min = st.number_input("Return 3M Min %", value=float(preset_filters.get('return_3m_min', -100.0)), key="r3m_filter")
+        with col2b:
+            return_1m_min = st.number_input("Return 1M Min %", value=float(preset_filters.get('return_1m_min', -100.0)), key="r1m_filter")
+            return_ytd_min = st.number_input("Return YTD Min %", value=float(preset_filters.get('return_ytd_min', -100.0)), key="rytd_filter")
+            distance_52w_high_max = st.number_input("Distance from 52W High Max %", value=float(preset_filters.get('distance_52w_high_max', 100.0)), key="d52w_filter")
+    
+    st.markdown("---")
+    st.markdown("#### 🎯 Scores Algorítmicos")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        quality_score_min = st.slider("**Quality Score Min**", 0, 100, 
+                                     value=int(preset_filters.get('quality_score_min', 0)), key="qs_filter")
+        value_score_min = st.slider("**Value Score Min**", 0, 100,
+                                   value=int(preset_filters.get('value_score_min', 0)), key="vs_filter")
+    
+    with col2:
+        growth_score_min = st.slider("**Growth Score Min**", 0, 100,
+                                    value=int(preset_filters.get('growth_score_min', 0)), key="gs_filter")
+        financial_health_score_min = st.slider("**Financial Health Min**", 0, 100,
+                                              value=int(preset_filters.get('financial_health_score_min', 0)), key="fhs_filter")
+    
+    with col3:
+        momentum_score_min = st.slider("**Momentum Score Min**", 0, 100,
+                                      value=int(preset_filters.get('momentum_score_min', 0)), key="ms_filter")
+        master_score_min = st.slider("**Master Score Min**", 0, 100,
+                                    value=int(preset_filters.get('master_score_min', 0)), key="master_filter")
+    
+    st.markdown("---")
+    st.markdown("#### 👥 Propiedad")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        insider_ownership_min = st.number_input("Insider Ownership Min %", value=float(preset_filters.get('insider_ownership_min', 0.0)), key="io_min_filter")
+        insider_ownership_max = st.number_input("Insider Ownership Max %", value=float(preset_filters.get('insider_ownership_max', 100.0)), key="io_max_filter")
+    
+    with col2:
+        institutional_ownership_min = st.number_input("Inst. Ownership Min %", value=float(preset_filters.get('institutional_ownership_min', 0.0)), key="inst_min_filter")
+        institutional_ownership_max = st.number_input("Inst. Ownership Max %", value=float(preset_filters.get('institutional_ownership_max', 100.0)), key="inst_max_filter")
+    
+    with col3:
+        short_float_min = st.number_input("Short % Float Min", value=float(preset_filters.get('short_float_min', 0.0)), key="sf_min_filter")
+        short_float_max = st.number_input("Short % Float Max", value=float(preset_filters.get('short_float_max', 100.0)), key="sf_max_filter")
+    
+    # Botón de aplicar filtros avanzados
+    st.markdown("---")
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        apply_advanced = st.button("⚡ **APLICAR TODOS LOS FILTROS**", type="primary", use_container_width=True, key="apply_advanced")
+    
+    if apply_advanced:
+        st.session_state.filters_applied = True
+        st.success("✅ Filtros aplicados correctamente")
+
+# =============================================================================
+# APLICACIÓN DE FILTROS
+# =============================================================================
+
+if st.session_state.filters_applied:
+    
+    filtered_df = df.copy()
+    
+    # Filtros básicos
+    if search_term:
+        filtered_df = filtered_df[
+            (filtered_df['Symbol'].str.contains(search_term.upper(), na=False)) |
+            (filtered_df['Company Name'].str.contains(search_term, case=False, na=False))
+        ]
+    
+    if sectors_filter:
+        filtered_df = filtered_df[filtered_df['Sector'].isin(sectors_filter)]
+    
+    if exchanges and 'Exchange' in filtered_df.columns:
+        filtered_df = filtered_df[filtered_df['Exchange'].isin(exchanges)]
+    
+    if in_index and 'In Index' in filtered_df.columns:
+        for index in in_index:
+            filtered_df = filtered_df[filtered_df['In Index'].str.contains(index, na=False)]
+    
+    # Market Cap
+    min_mc = parse_market_cap(min_mcap)
+    max_mc = parse_market_cap(max_mcap)
+    if min_mc is not None and 'Market Cap' in filtered_df.columns:
+        filtered_df = filtered_df[filtered_df['Market Cap'] >= min_mc]
+    if max_mc is not None and 'Market Cap' in filtered_df.columns:
+        filtered_df = filtered_df[filtered_df['Market Cap'] <= max_mc]
+    
+    # Aplicar TODOS los filtros numéricos de manera eficiente
+    # Crear lista de todos los filtros para aplicar
+    filters_to_apply = {
+        'PE Ratio': (pe_min, pe_max),
+        'PB Ratio': (pb_min, pb_max),
+        'PS Ratio': (ps_min, ps_max),
+        'PEG Ratio': (peg_min, peg_max),
+        'EV/EBITDA': (ev_ebitda_min, ev_ebitda_max),
+        'P/CF': (pcf_min, pcf_max),
+        'Rev. Growth': (rev_growth_min, rev_growth_max),
+        'EPS Growth': (eps_growth_min, eps_growth_max),
+        'FCF Growth': (fcf_growth_min, None),
+        'ROE': (roe_min, roe_max),
+        'ROA': (roa_min, roa_max),
+        'ROIC': (roic_min, None),
+        'ROCE': (roce_min, None),
+        'Profit Margin': (profit_margin_min, None),
+        'Gross Margin': (gross_margin_min, None),
+        'Operating Margin': (operating_margin_min, None),
+        'FCF Margin': (fcf_margin_min, None),
+        'EBITDA Margin': (ebitda_margin_min, None),
+        'EBIT Margin': (ebit_margin_min, None),
+        'Div. Yield': (div_yield_min, div_yield_max),
+        'Payout Ratio': (payout_ratio_min, payout_ratio_max),
+        'Years': (years_min, None),
+        'Current Ratio': (current_ratio_min, None),
+        'Quick Ratio': (quick_ratio_min, None),
+        'Debt / Equity': (None, debt_equity_max),
+        'Int. Cov.': (interest_coverage_min, None),
+        'Z-Score': (z_score_min, None),
+        'F-Score': (f_score_min, None),
+        'RSI': (rsi_min, rsi_max),
+        'Beta (5Y)': (beta_min, beta_max),
+        'Rel. Volume': (rel_volume_min, None),
+        'Return 1Y': (return_1y_min, None),
+        'Return 6M': (return_6m_min, None),
+        'Return 3M': (return_3m_min, None),
+        'Return 1M': (return_1m_min, None),
+        'Return YTD': (return_ytd_min, None),
+        'Quality_Score': (quality_score_min, None),
+        'Value_Score': (value_score_min, None),
+        'Growth_Score': (growth_score_min, None),
+        'Financial_Health_Score': (financial_health_score_min, None),
+        'Momentum_Score': (momentum_score_min, None),
+        'Master_Score': (master_score_min, None),
+    }
+    
+    # Aplicar cada filtro
+    for col_name, (min_val, max_val) in filters_to_apply.items():
+        if col_name in filtered_df.columns:
+            if min_val is not None and min_val != -100.0 and min_val != 0.0:
+                filtered_df = filtered_df[filtered_df[col_name] >= min_val]
+            if max_val is not None and max_val != 100.0 and max_val != 500.0:
+                filtered_df = filtered_df[filtered_df[col_name] <= max_val]
+    
+    # =============================================================================
+    # MÉTRICAS RESUMEN
+    # =============================================================================
+    
+    st.markdown("---")
+    
+    # Métricas principales
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    
+    with col1:
+        st.metric("📊 Acciones", f"{len(filtered_df):,}", f"{len(filtered_df)/len(df)*100:.1f}% del total")
+    with col2:
+        total_mcap = filtered_df['Market Cap'].sum() if 'Market Cap' in filtered_df.columns else 0
+        st.metric("💰 Cap Total", format_number(total_mcap, prefix="$", decimals=1))
+    with col3:
+        median_pe = filtered_df['PE Ratio'].median() if 'PE Ratio' in filtered_df.columns else 0
+        st.metric("P/E Med", f"{median_pe:.1f}")
+    with col4:
+        avg_yield = filtered_df['Div. Yield'].mean() if 'Div. Yield' in filtered_df.columns else 0
+        st.metric("Yield", f"{avg_yield:.2f}%")
+    with col5:
+        median_roe = filtered_df['ROE'].median() if 'ROE' in filtered_df.columns else 0
+        st.metric("ROE Med", f"{median_roe:.1f}%")
+    with col6:
+        avg_master = filtered_df['Master_Score'].mean() if 'Master_Score' in filtered_df.columns else 0
+        st.metric("Score", f"{avg_master:.0f}/100")
+    
+    # =============================================================================
+    # TAB 2: RESULTADOS
+    # =============================================================================
+    
+    with tab_results:
+        st.markdown(f"### 📊 Resultados del Screener: {selected_screener}")
         
-        # Aplicar todos los filtros
-        if search_term:
-            filtered_df = filtered_df[
-                (filtered_df['Symbol'].str.contains(search_term.upper(), na=False)) |
-                (filtered_df['Company Name'].str.contains(search_term, case=False, na=False))
-            ]
-        
-        if sectors:
-            filtered_df = filtered_df[filtered_df['Sector'].isin(sectors)]
-        
-        # Market Cap
-        min_mc = parse_market_cap(min_mcap)
-        max_mc = parse_market_cap(max_mcap)
-        if min_mc:
-            filtered_df = filtered_df[filtered_df['Market Cap'] >= min_mc]
-        if max_mc:
-            filtered_df = filtered_df[filtered_df['Market Cap'] <= max_mc]
-        
-        # Aplicar filtros del screener
-        for key, value in preset_filters.items():
-            if key == 'sectors':
-                continue
-            elif key.endswith('_min'):
-                col = key.replace('_min', '').replace('_', ' ').title()
-                # Buscar columna exacta
-                for df_col in filtered_df.columns:
-                    if df_col.lower().replace(' ', '_') == key.replace('_min', ''):
-                        filtered_df = filtered_df[filtered_df[df_col] >= value]
-                        break
-            elif key.endswith('_max'):
-                col = key.replace('_max', '').replace('_', ' ').title()
-                for df_col in filtered_df.columns:
-                    if df_col.lower().replace(' ', '_') == key.replace('_max', ''):
-                        filtered_df = filtered_df[filtered_df[df_col] <= value]
-                        break
-            elif key in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df[key] == value]
-        
-        # TAB 1: RESULTADOS
-        with tabs[0]:
-            st.markdown(f"### 📊 Resultados: {selected_screener}")
+        # Configuración de vista
+        with st.expander("⚙️ Configurar Vista", expanded=False):
             
-            # Métricas resumen
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Total", f"{len(filtered_df):,}")
-            with col2:
-                avg_score = filtered_df['Ultra_Master_Score'].mean() if 'Ultra_Master_Score' in filtered_df.columns else 0
-                st.metric("Score Promedio", f"{avg_score:.0f}")
-            with col3:
-                median_pe = filtered_df['PE Ratio'].median() if 'PE Ratio' in filtered_df.columns else 0
-                st.metric("P/E Mediano", f"{median_pe:.1f}")
-            with col4:
-                total_mcap = filtered_df['Market Cap'].sum() if 'Market Cap' in filtered_df.columns else 0
-                st.metric("MCap Total", format_number(total_mcap, prefix="$"))
-            
-            # Selector de columnas inteligente según screener
-            if "Value" in selected_screener:
-                default_cols = ['Symbol', 'Company Name', 'Market Cap', 'PE Ratio', 'PB Ratio',
-                               'Deep_Value_Score', 'Magic_Formula_Score', 'FCF Yield']
-            elif "Growth" in selected_screener:
-                default_cols = ['Symbol', 'Company Name', 'Market Cap', 'Rev. Growth',
-                               'Revenue_Growth_Score', 'Rule_of_40_Score', 'CANSLIM_Score']
+            # Columnas predeterminadas según el screener
+            if "Value" in selected_screener or "Graham" in selected_screener:
+                default_cols = ['Symbol', 'Company Name', 'Market Cap', 'PE Ratio', 'PB Ratio', 
+                              'Value_Score', 'FCF Yield', 'Current Ratio', 'Sector']
+            elif "Growth" in selected_screener or "GARP" in selected_screener:
+                default_cols = ['Symbol', 'Company Name', 'Market Cap', 'Rev. Growth', 
+                              'EPS Growth', 'Growth_Score', 'PEG Ratio', 'Sector']
             elif "Dividend" in selected_screener:
-                default_cols = ['Symbol', 'Company Name', 'Div. Yield', 'Payout Ratio',
-                               'Dividend_Quality_Score', 'Years', 'FCF Yield']
-            elif "Momentum" in selected_screener:
-                default_cols = ['Symbol', 'Company Name', 'Return 1Y', 'RSI',
-                               'Price_Momentum_Score', 'Volume_Momentum_Score', 'Short_Squeeze_Score']
+                default_cols = ['Symbol', 'Company Name', 'Market Cap', 'Div. Yield', 
+                              'Payout Ratio', 'Years', 'Financial_Health_Score', 'Sector']
+            elif "Quality" in selected_screener or "Defensive" in selected_screener:
+                default_cols = ['Symbol', 'Company Name', 'Market Cap', 'ROE', 'ROIC', 
+                              'Quality_Score', 'Profit Margin', 'Sector']
+            elif "Momentum" in selected_screener or "Breakout" in selected_screener:
+                default_cols = ['Symbol', 'Company Name', 'Market Cap', 'Return 1Y', 'RSI',
+                              'Momentum_Score', 'Rel. Volume', 'Sector']
+            elif "Quant" in selected_screener or "Factor" in selected_screener:
+                default_cols = ['Symbol', 'Company Name', 'Market Cap', 'Master_Score', 
+                              'Quality_Score', 'Value_Score', 'Growth_Score', 'Momentum_Score']
             else:
-                default_cols = ['Symbol', 'Company Name', 'Market Cap', 'Ultra_Master_Score',
-                               'Deep_Value_Score', 'Revenue_Growth_Score', 'Profitability_Score']
+                default_cols = ['Symbol', 'Company Name', 'Market Cap', 'PE Ratio', 
+                              'ROE', 'Master_Score', 'Sector']
             
             available_cols = [col for col in default_cols if col in filtered_df.columns]
             
-            # Tabla interactiva
-            st.dataframe(
-                filtered_df[available_cols].head(100).style.background_gradient(
-                    cmap='RdYlGn',
-                    subset=[col for col in available_cols if 'Score' in col],
-                    vmin=0, vmax=100
-                ),
-                use_container_width=True,
-                height=600
-            )
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                selected_columns = st.multiselect("Columnas:", options=filtered_df.columns.tolist(), 
+                                                 default=available_cols)
+            with col2:
+                sort_column = st.selectbox("Ordenar por:", 
+                                          options=selected_columns if selected_columns else ['Symbol'])
+                sort_order = st.radio("Orden:", ["Descendente", "Ascendente"], horizontal=True)
+            with col3:
+                n_rows = st.select_slider("Filas a mostrar:", options=[25, 50, 100, 200, 500], value=100)
         
-        # TAB 2: ANALYTICS
-        with tabs[1]:
-            st.markdown("### 📈 Analytics Avanzado")
+        # Mostrar tabla de resultados
+        if selected_columns:
+            display_df = filtered_df[selected_columns].sort_values(
+                by=sort_column,
+                ascending=(sort_order == "Ascendente")
+            ).head(n_rows)
             
-            # Scatter matrix de scores
-            score_cols = [col for col in filtered_df.columns if col.endswith('_Score')][:6]
-            if len(score_cols) >= 2:
-                fig = px.scatter_matrix(
-                    filtered_df.head(500),
-                    dimensions=score_cols,
-                    color='Ultra_Master_Score' if 'Ultra_Master_Score' in filtered_df.columns else None,
-                    title="Matrix de Scores Multi-Dimensional",
-                    height=800
-                )
-                fig.update_layout(template='plotly_dark')
-                st.plotly_chart(fig, use_container_width=True)
-        
-        # TAB 3: SCORES
-        with tabs[2]:
-            st.markdown("### 🎯 Análisis de Scores")
+            # Formateo
+            format_dict = {}
+            for col in selected_columns:
+                if 'Market Cap' in col or 'Revenue' in col:
+                    format_dict[col] = lambda x: format_number(x, prefix="$", decimals=1)
+                elif any(term in col for term in ['Yield', 'Growth', 'ROE', 'ROA', 'Margin', '%']):
+                    format_dict[col] = '{:.2f}%'
+                elif 'Score' in col:
+                    format_dict[col] = '{:.0f}'
+                elif any(term in col for term in ['Ratio', 'PE', 'PB', 'PS', 'PEG']):
+                    format_dict[col] = '{:.2f}'
             
-            # Top 10 por cada score
-            score_types = ['Deep_Value_Score', 'Revenue_Growth_Score', 'Profitability_Score',
-                          'Dividend_Quality_Score', 'Price_Momentum_Score', 'Innovation_Score']
+            # Aplicar color gradient a scores
+            score_cols = [col for col in selected_columns if 'Score' in col]
             
-            cols = st.columns(3)
-            for i, score in enumerate(score_types):
-                if score in filtered_df.columns:
-                    with cols[i % 3]:
-                        st.markdown(f"**Top {score.replace('_', ' ')}**")
-                        top = filtered_df.nlargest(5, score)[['Symbol', score]]
-                        for _, row in top.iterrows():
-                            color = "#4caf50" if row[score] > 80 else "#ff9800" if row[score] > 60 else "#f44336"
-                            st.markdown(f"<span style='color: {color}'>**{row['Symbol']}**: {row[score]:.0f}</span>", 
-                                      unsafe_allow_html=True)
-        
-        # TAB 4: HEATMAPS
-        with tabs[3]:
-            st.markdown("### 🔥 Heatmaps de Correlación")
+            styled_df = display_df.style.format(format_dict, na_rep='N/A')
+            if score_cols:
+                styled_df = styled_df.background_gradient(cmap='RdYlGn', subset=score_cols, vmin=0, vmax=100)
             
-            # Correlación entre scores
-            score_cols = [col for col in filtered_df.columns if col.endswith('_Score')][:15]
-            if len(score_cols) > 2:
-                corr = filtered_df[score_cols].corr()
-                fig = px.imshow(
-                    corr,
-                    title="Correlación entre Scores",
-                    color_continuous_scale='RdBu',
-                    zmin=-1, zmax=1
-                )
-                fig.update_layout(template='plotly_dark', height=600)
-                st.plotly_chart(fig, use_container_width=True)
-
-elif operation_mode == "🔬 Constructor Avanzado":
+            st.dataframe(styled_df, use_container_width=True, height=600)
+            
+            # Información de resultados
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.success(f"✅ {len(display_df)} de {len(filtered_df)} resultados mostrados")
+            with col2:
+                st.info(f"📊 Total en universo: {len(df):,} acciones")
+            with col3:
+                active_filters = sum(1 for x in [search_term, sectors_filter, min_mc, max_mc] if x)
+                st.warning(f"🔍 Filtros activos: {active_filters}")
     
-    with tabs[0]:  # Constructor
-        st.markdown("### ⚙️ Constructor de Filtros Avanzado")
-        st.info("Acceso completo a las 230+ métricas disponibles")
+    # =============================================================================
+    # TAB 3: ANÁLISIS VISUAL
+    # =============================================================================
+    
+    with tab_analysis:
+        st.markdown("### 📈 Dashboard de Análisis Visual")
         
-        # Organizar métricas por categorías
-        col1, col2, col3, col4 = st.columns(4)
+        # Primera fila de gráficos
+        col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("#### 📊 Scores Algorítmicos")
-            with st.expander("20+ Scores Disponibles"):
-                ultra_master_min = st.slider("Ultra Master Score", 0, 100, 0)
-                deep_value_min = st.slider("Deep Value Score", 0, 100, 0)
-                revenue_growth_min = st.slider("Revenue Growth Score", 0, 100, 0)
-                profitability_min = st.slider("Profitability Score", 0, 100, 0)
-                dividend_quality_min = st.slider("Dividend Quality Score", 0, 100, 0)
-                momentum_min = st.slider("Price Momentum Score", 0, 100, 0)
-                innovation_min = st.slider("Innovation Score", 0, 100, 0)
-                canslim_min = st.slider("CANSLIM Score", 0, 100, 0)
-                magic_formula_min = st.slider("Magic Formula Score", 0, 100, 0)
+            # Scatter: Value vs Quality
+            if all(col in filtered_df.columns for col in ['Value_Score', 'Quality_Score']):
+                fig = px.scatter(
+                    filtered_df.head(300),
+                    x='Value_Score',
+                    y='Quality_Score',
+                    size='Market Cap' if 'Market Cap' in filtered_df.columns else None,
+                    color='Master_Score',
+                    hover_data=['Symbol', 'Company Name'],
+                    title="📊 Matriz Value vs Quality",
+                    color_continuous_scale='Viridis',
+                    labels={'Value_Score': 'Value Score', 'Quality_Score': 'Quality Score'}
+                )
+                fig.add_hline(y=50, line_dash="dash", opacity=0.3)
+                fig.add_vline(x=50, line_dash="dash", opacity=0.3)
+                fig.update_layout(template="plotly_dark", height=400)
+                st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            st.markdown("#### 💰 Valoración")
-            with st.expander("Métricas de Valor"):
-                pe_max = st.number_input("P/E Max", value=100.0)
-                pb_max = st.number_input("P/B Max", value=10.0)
-                ps_max = st.number_input("P/S Max", value=20.0)
-                peg_max = st.number_input("PEG Max", value=3.0)
-                ev_ebitda_max = st.number_input("EV/EBITDA Max", value=50.0)
-                pfcf_max = st.number_input("P/FCF Max", value=50.0)
+            # Scatter: Growth vs Momentum
+            if all(col in filtered_df.columns for col in ['Growth_Score', 'Momentum_Score']):
+                fig = px.scatter(
+                    filtered_df.head(300),
+                    x='Growth_Score',
+                    y='Momentum_Score',
+                    size='Market Cap' if 'Market Cap' in filtered_df.columns else None,
+                    color='Financial_Health_Score' if 'Financial_Health_Score' in filtered_df.columns else None,
+                    hover_data=['Symbol', 'Company Name'],
+                    title="🚀 Matriz Growth vs Momentum",
+                    color_continuous_scale='RdYlGn',
+                    labels={'Growth_Score': 'Growth Score', 'Momentum_Score': 'Momentum Score'}
+                )
+                fig.add_hline(y=50, line_dash="dash", opacity=0.3)
+                fig.add_vline(x=50, line_dash="dash", opacity=0.3)
+                fig.update_layout(template="plotly_dark", height=400)
+                st.plotly_chart(fig, use_container_width=True)
+        
+        # Segunda fila - Distribuciones
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Distribución por sector
+            if 'Sector' in filtered_df.columns:
+                sector_data = filtered_df['Sector'].value_counts().head(10)
+                fig = px.bar(
+                    x=sector_data.values,
+                    y=sector_data.index,
+                    orientation='h',
+                    title="🏢 Top 10 Sectores",
+                    labels={'x': 'Número de Acciones', 'y': 'Sector'},
+                    color_discrete_sequence=['#4a9eff']
+                )
+                fig.update_layout(template="plotly_dark", height=400)
+                st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            # Histograma de Master Score
+            if 'Master_Score' in filtered_df.columns:
+                fig = px.histogram(
+                    filtered_df,
+                    x='Master_Score',
+                    nbins=20,
+                    title="📊 Distribución del Master Score",
+                    labels={'Master_Score': 'Master Score', 'count': 'Frecuencia'},
+                    color_discrete_sequence=['#4a9eff']
+                )
+                fig.add_vline(x=filtered_df['Master_Score'].median(), line_dash="dash", 
+                            annotation_text=f"Mediana: {filtered_df['Master_Score'].median():.0f}")
+                fig.update_layout(template="plotly_dark", height=400)
+                st.plotly_chart(fig, use_container_width=True)
+        
+        # Tercera fila - Heatmap de correlaciones
+        st.markdown("---")
+        st.markdown("### 🔥 Matriz de Correlación de Scores")
+        
+        score_cols = ['Master_Score', 'Quality_Score', 'Value_Score', 'Growth_Score', 
+                     'Financial_Health_Score', 'Momentum_Score']
+        available_scores = [col for col in score_cols if col in filtered_df.columns]
+        
+        if len(available_scores) > 1:
+            corr_matrix = filtered_df[available_scores].corr()
+            fig = px.imshow(
+                corr_matrix,
+                title="Correlaciones entre Scores",
+                color_continuous_scale='RdBu',
+                aspect='auto',
+                zmin=-1, zmax=1,
+                text_auto='.2f'
+            )
+            fig.update_layout(template="plotly_dark", height=500)
+            st.plotly_chart(fig, use_container_width=True)
+    
+    # =============================================================================
+    # TAB 4: RANKINGS
+    # =============================================================================
+    
+    with tab_rankings:
+        st.markdown("### 🏆 Rankings por Categorías")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("#### 💎 **Top Value**")
+            if 'Value_Score' in filtered_df.columns:
+                top_value = filtered_df.nlargest(10, 'Value_Score')[['Symbol', 'Company Name', 'Value_Score', 'PE Ratio']]
+                for idx, row in top_value.iterrows():
+                    color = "#4caf50" if row['Value_Score'] > 80 else "#ff9800" if row['Value_Score'] > 60 else "#f44336"
+                    st.markdown(f"<span style='color: {color}'>**{row['Symbol']}** - Score: {row['Value_Score']:.0f}</span>", unsafe_allow_html=True)
+                    st.caption(f"{row['Company Name'][:30]} | P/E: {row['PE Ratio']:.1f}")
+        
+        with col2:
+            st.markdown("#### 🚀 **Top Growth**")
+            if 'Growth_Score' in filtered_df.columns:
+                top_growth = filtered_df.nlargest(10, 'Growth_Score')[['Symbol', 'Company Name', 'Growth_Score', 'Rev. Growth']]
+                for idx, row in top_growth.iterrows():
+                    color = "#4caf50" if row['Growth_Score'] > 80 else "#ff9800" if row['Growth_Score'] > 60 else "#f44336"
+                    st.markdown(f"<span style='color: {color}'>**{row['Symbol']}** - Score: {row['Growth_Score']:.0f}</span>", unsafe_allow_html=True)
+                    st.caption(f"{row['Company Name'][:30]} | Rev: {row['Rev. Growth']:.1f}%")
         
         with col3:
-            st.markdown("#### 📈 Crecimiento")
-            with st.expander("Métricas de Growth"):
-                rev_growth_min = st.number_input("Revenue Growth Min %", value=-100.0)
-                eps_growth_min = st.number_input("EPS Growth Min %", value=-100.0)
-                fcf_growth_min = st.number_input("FCF Growth Min %", value=-100.0)
-                rev_5y_cagr_min = st.number_input("Revenue 5Y CAGR Min %", value=-100.0)
-                rule_of_40_min = st.number_input("Rule of 40 Min", value=0.0)
+            st.markdown("#### 🏅 **Top Quality**")
+            if 'Quality_Score' in filtered_df.columns:
+                top_quality = filtered_df.nlargest(10, 'Quality_Score')[['Symbol', 'Company Name', 'Quality_Score', 'ROE']]
+                for idx, row in top_quality.iterrows():
+                    color = "#4caf50" if row['Quality_Score'] > 80 else "#ff9800" if row['Quality_Score'] > 60 else "#f44336"
+                    st.markdown(f"<span style='color: {color}'>**{row['Symbol']}** - Score: {row['Quality_Score']:.0f}</span>", unsafe_allow_html=True)
+                    st.caption(f"{row['Company Name'][:30]} | ROE: {row['ROE']:.1f}%")
         
-        with col4:
-            st.markdown("#### 🏥 Salud Financiera")
-            with st.expander("Balance y Liquidez"):
-                current_ratio_min = st.number_input("Current Ratio Min", value=0.0)
-                debt_equity_max = st.number_input("Debt/Equity Max", value=10.0)
-                z_score_min = st.number_input("Z-Score Min", value=-5.0)
-                fcf_yield_min = st.number_input("FCF Yield Min %", value=-20.0)
-                roe_min = st.number_input("ROE Min %", value=-100.0)
-
-elif operation_mode == "🤖 ML Discovery":
+        st.markdown("---")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("#### 📈 **Top Momentum**")
+            if 'Momentum_Score' in filtered_df.columns:
+                top_momentum = filtered_df.nlargest(10, 'Momentum_Score')[['Symbol', 'Company Name', 'Momentum_Score', 'Return 1Y']]
+                for idx, row in top_momentum.iterrows():
+                    color = "#4caf50" if row['Momentum_Score'] > 80 else "#ff9800" if row['Momentum_Score'] > 60 else "#f44336"
+                    st.markdown(f"<span style='color: {color}'>**{row['Symbol']}** - Score: {row['Momentum_Score']:.0f}</span>", unsafe_allow_html=True)
+                    st.caption(f"{row['Company Name'][:30]} | 1Y: {row['Return 1Y']:.1f}%")
+        
+        with col2:
+            st.markdown("#### 💰 **Top Dividend**")
+            if 'Div. Yield' in filtered_df.columns:
+                top_dividend = filtered_df[filtered_df['Div. Yield'] > 0].nlargest(10, 'Div. Yield')[['Symbol', 'Company Name', 'Div. Yield', 'Payout Ratio']]
+                for idx, row in top_dividend.iterrows():
+                    color = "#4caf50" if row['Payout Ratio'] < 60 else "#ff9800" if row['Payout Ratio'] < 80 else "#f44336"
+                    st.markdown(f"<span style='color: {color}'>**{row['Symbol']}** - Yield: {row['Div. Yield']:.2f}%</span>", unsafe_allow_html=True)
+                    st.caption(f"{row['Company Name'][:30]} | Payout: {row['Payout Ratio']:.1f}%")
+        
+        with col3:
+            st.markdown("#### 🏥 **Top Financial Health**")
+            if 'Financial_Health_Score' in filtered_df.columns:
+                top_health = filtered_df.nlargest(10, 'Financial_Health_Score')[['Symbol', 'Company Name', 'Financial_Health_Score', 'Current Ratio']]
+                for idx, row in top_health.iterrows():
+                    color = "#4caf50" if row['Financial_Health_Score'] > 80 else "#ff9800" if row['Financial_Health_Score'] > 60 else "#f44336"
+                    st.markdown(f"<span style='color: {color}'>**{row['Symbol']}** - Score: {row['Financial_Health_Score']:.0f}</span>", unsafe_allow_html=True)
+                    st.caption(f"{row['Company Name'][:30]} | CR: {row['Current Ratio']:.2f}")
     
-    with tabs[0]:  # ML Analysis
-        st.markdown("### 🤖 Machine Learning Discovery")
+    # =============================================================================
+    # TAB 5: ANÁLISIS SECTORIAL
+    # =============================================================================
+    
+    with tab_sector:
+        st.markdown("### 🎯 Análisis Sectorial Profundo")
         
-        # PCA Analysis
-        st.markdown("#### 🎯 Análisis de Componentes Principales")
-        
-        numeric_cols = df.select_dtypes(include=[np.number]).columns
-        score_cols = [col for col in numeric_cols if 'Score' in col]
-        
-        if len(score_cols) > 2:
-            # Preparar datos para PCA
-            pca_data = df[score_cols].dropna()
-            scaler = StandardScaler()
-            scaled_data = scaler.fit_transform(pca_data)
+        if 'Sector' in filtered_df.columns:
+            # Métricas por sector
+            sector_metrics = filtered_df.groupby('Sector').agg({
+                'Symbol': 'count',
+                'Market Cap': 'sum',
+                'PE Ratio': 'median',
+                'ROE': 'median',
+                'Rev. Growth': 'median',
+                'Div. Yield': 'mean',
+                'Master_Score': 'mean'
+            }).round(2)
             
-            # PCA
-            pca = PCA(n_components=3)
-            pca_result = pca.fit_transform(scaled_data)
+            sector_metrics.columns = ['Acciones', 'Cap Total', 'P/E Med', 'ROE Med', 
+                                     'Crec Med', 'Yield Prom', 'Master Score']
+            sector_metrics = sector_metrics.sort_values('Master Score', ascending=False)
             
-            # Visualización 3D
-            fig = px.scatter_3d(
-                x=pca_result[:, 0],
-                y=pca_result[:, 1],
-                z=pca_result[:, 2],
-                color=df.loc[pca_data.index, 'Ultra_Master_Score'] if 'Ultra_Master_Score' in df.columns else None,
-                hover_data={'Symbol': df.loc[pca_data.index, 'Symbol'].values},
-                title="PCA 3D - Espacio de Scores",
-                labels={'x': f'PC1 ({pca.explained_variance_ratio_[0]:.1%})',
-                       'y': f'PC2 ({pca.explained_variance_ratio_[1]:.1%})',
-                       'z': f'PC3 ({pca.explained_variance_ratio_[2]:.1%})'}
+            # Mostrar tabla
+            st.dataframe(
+                sector_metrics.style.format({
+                    'Cap Total': lambda x: format_number(x, prefix="$", decimals=1),
+                    'P/E Med': '{:.1f}',
+                    'ROE Med': '{:.1f}%',
+                    'Crec Med': '{:.1f}%',
+                    'Yield Prom': '{:.2f}%',
+                    'Master Score': '{:.0f}'
+                }).background_gradient(cmap='RdYlGn', subset=['Master Score', 'ROE Med']),
+                use_container_width=True
             )
-            fig.update_layout(template='plotly_dark', height=600)
-            st.plotly_chart(fig, use_container_width=True)
             
-            # Explicación de componentes
-            st.info(f"Los 3 componentes principales explican el {pca.explained_variance_ratio_.sum():.1%} de la varianza")
+            # Gráfico de burbujas
+            st.markdown("---")
+            st.markdown("### 📊 Mapa de Oportunidades Sectoriales")
+            
+            sector_data = sector_metrics.reset_index()
+            sector_data = sector_data[sector_data['Acciones'] >= 3]  # Solo sectores con 3+ acciones
+            
+            if len(sector_data) > 0:
+                fig = px.scatter(
+                    sector_data,
+                    x='P/E Med',
+                    y='ROE Med',
+                    size='Cap Total',
+                    color='Master Score',
+                    hover_data=['Acciones', 'Yield Prom', 'Crec Med'],
+                    text='Sector',
+                    title="Sectores: Valoración vs Rentabilidad",
+                    color_continuous_scale='RdYlGn',
+                    labels={'P/E Med': 'P/E Mediano', 'ROE Med': 'ROE Mediano (%)'}
+                )
+                
+                # Añadir líneas de referencia
+                fig.add_hline(y=15, line_dash="dash", line_color="gray", opacity=0.5)
+                fig.add_vline(x=20, line_dash="dash", line_color="gray", opacity=0.5)
+                
+                fig.update_traces(textposition='top center')
+                fig.update_layout(template="plotly_dark", height=600)
+                st.plotly_chart(fig, use_container_width=True)
     
-    with tabs[1]:  # Anomalías
-        st.markdown("### 🎯 Detección de Anomalías")
+    # =============================================================================
+    # TAB 6: EXPORTAR
+    # =============================================================================
+    
+    with tab_export:
+        st.markdown("### 💾 Exportar Resultados")
         
-        # Mostrar stocks con características especiales
-        anomaly_cols = ['Value_Trap_Risk', 'Hidden_Gem', 'Turnaround_Potential', 
-                       'Dividend_Aristocrat', 'Hypergrowth', 'Acquisition_Target']
+        col1, col2 = st.columns(2)
         
-        for anomaly in anomaly_cols:
-            if anomaly in df.columns:
-                anomaly_stocks = df[df[anomaly] == 100]
-                if len(anomaly_stocks) > 0:
-                    st.markdown(f"#### {anomaly.replace('_', ' ')}")
-                    st.dataframe(
-                        anomaly_stocks[['Symbol', 'Company Name', 'Market Cap', 'Ultra_Master_Score']].head(10),
-                        use_container_width=True
-                    )
+        with col1:
+            st.info(f"📊 **{len(filtered_df):,}** acciones filtradas listas para exportar")
+            
+            export_preset = st.selectbox(
+                "Preset de exportación:",
+                ["Columnas Actuales", "Datos Básicos", "Análisis Completo", "Solo Scores", "Personalizado"]
+            )
+            
+            if export_preset == "Columnas Actuales":
+                export_cols = selected_columns if 'selected_columns' in locals() else ['Symbol', 'Company Name']
+            elif export_preset == "Datos Básicos":
+                export_cols = ['Symbol', 'Company Name', 'Market Cap', 'PE Ratio', 'ROE', 'Div. Yield', 'Master_Score']
+            elif export_preset == "Solo Scores":
+                export_cols = ['Symbol', 'Company Name', 'Master_Score', 'Quality_Score', 
+                              'Value_Score', 'Growth_Score', 'Financial_Health_Score', 'Momentum_Score']
+            elif export_preset == "Análisis Completo":
+                export_cols = filtered_df.columns.tolist()
+            else:
+                export_cols = st.multiselect(
+                    "Selecciona columnas:",
+                    options=filtered_df.columns.tolist(),
+                    default=['Symbol', 'Company Name', 'Market Cap', 'Master_Score']
+                )
+            
+            # Filtrar columnas disponibles
+            export_cols = [col for col in export_cols if col in filtered_df.columns]
+        
+        with col2:
+            st.markdown("#### 📥 Descargar Datos")
+            
+            # CSV
+            csv = filtered_df[export_cols].to_csv(index=False)
+            st.download_button(
+                label="📄 Descargar CSV",
+                data=csv,
+                file_name=f"bquant_screener_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+            
+            # Excel
+            try:
+                import io
+                buffer = io.BytesIO()
+                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                    # Hoja de resultados
+                    filtered_df[export_cols].to_excel(writer, sheet_name='Screener Results', index=False)
+                    
+                    # Hoja de información
+                    info_data = {
+                        'Información': ['Fecha', 'Screener', 'Total Resultados', 'Filtros Aplicados'],
+                        'Valor': [
+                            pd.Timestamp.now().strftime('%Y-%m-%d %H:%M'),
+                            selected_screener,
+                            len(filtered_df),
+                            f"{search_term or 'N/A'}, {', '.join(sectors_filter) if sectors_filter else 'Todos'}"
+                        ]
+                    }
+                    pd.DataFrame(info_data).to_excel(writer, sheet_name='Info', index=False)
+                
+                st.download_button(
+                    label="📗 Descargar Excel",
+                    data=buffer.getvalue(),
+                    file_name=f"bquant_screener_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+            except:
+                st.info("Instala `openpyxl` para exportar a Excel: `pip install openpyxl`")
+        
+        # Vista previa
+        st.markdown("---")
+        st.markdown("#### 👁️ Vista Previa de Exportación")
+        st.dataframe(filtered_df[export_cols].head(10), use_container_width=True)
 
-# Footer
+else:
+    # Si no se han aplicado filtros, mostrar mensaje
+    st.info("👈 Selecciona un screener y aplica filtros para ver resultados")
+    
+    # Mostrar algunos stats generales
+    st.markdown("### 📊 Estadísticas Generales del Universo")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Acciones", f"{len(df):,}")
+    with col2:
+        st.metric("Sectores", f"{df['Sector'].nunique()}")
+    with col3:
+        median_pe = df['PE Ratio'].median() if 'PE Ratio' in df.columns else 0
+        st.metric("P/E Mediano", f"{median_pe:.1f}")
+    with col4:
+        total_mcap = df['Market Cap'].sum() if 'Market Cap' in df.columns else 0
+        st.metric("Cap. Total", format_number(total_mcap, prefix="$", decimals=0))
+
+# =============================================================================
+# FOOTER
+# =============================================================================
+
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; padding: 20px; color: #b8b8b8;'>
-    <strong>BQuant Ultra Screener Pro</strong> | 230+ métricas | 20+ scores algorítmicos<br>
-    Desarrollado por <strong>@Gsnchez</strong> | <strong>bquantfinance.com</strong>
+    <strong>BQuant Professional Stock Screener</strong><br>
+    Desarrollado por <strong>@Gsnchez</strong> | <strong>bquantfinance.com</strong><br>
+    <small>Base de datos: 5,500+ acciones | 230+ métricas | Actualizado: Sept 2025</small>
 </div>
 """, unsafe_allow_html=True)
