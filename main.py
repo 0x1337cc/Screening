@@ -675,7 +675,7 @@ with tab_filters:
     col1, col2, col3 = st.columns([1, 1, 1])
     if col2.button("⚡ **APLICAR TODOS LOS FILTROS**", type="primary", use_container_width=True):
         st.session_state.filters_applied = True
-# =============================================================================
+ # =============================================================================
 # APLICACIÓN DE FILTROS
 # =============================================================================
 if st.session_state.filters_applied:
@@ -784,7 +784,13 @@ if st.session_state.filters_applied:
                 
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    selected_columns = st.multiselect("Selecciona Columnas:", options=list(df.columns), default=available_cols)
+                    # ----- FIX APPLIED HERE -----
+                    selected_columns = st.multiselect(
+                        "Selecciona Columnas:", 
+                        options=list(df.columns), 
+                        default=available_cols,
+                        key="column_selector"  # The unique key that solves the error
+                    )
                 with col2:
                     sort_column = st.selectbox("Ordenar por:", options=selected_columns if selected_columns else ['Symbol'])
                     sort_order = st.radio("Orden:", ["Descendente", "Ascendente"], horizontal=True)
@@ -924,7 +930,6 @@ if st.session_state.filters_applied:
             )
         else:
             st.warning("⚠️ No hay datos para exportar.")
-
     # =============================================================================
     # MÉTRICAS RESUMEN, RESULTADOS Y RESTO DE TABS
     # =============================================================================
