@@ -179,7 +179,44 @@ def style_dataframe(df_to_style):
     if score_cols:
         styled_df = styled_df.background_gradient(cmap='RdYlGn', subset=score_cols, vmin=0, vmax=100)
     return styled_df
+    
+def render_ranking_card(title, emoji, df, score_col, metric_col, metric_label, metric_format, num_results=10):
+    st.markdown(f"#### {emoji} {title}")
+    
+    # Asegurarse de que las columnas existen y no están vacías
+    if score_col not in df.columns or df[score_col].empty:
+        st.caption(f"No hay datos de '{score_col}' para mostrar.")
+        return
+        
+    sorted_df = df.nlargest(num_results, score_col)
+    
+    if sorted_df.empty:
+        st.caption("No hay resultados en esta categoría.")
+        return
 
+    for _, row in sorted_df.iterrows():
+        score = row[score_col]
+        
+        # Lógica de color
+        if score >= 75:
+            color = "#28a745"  # Verde
+        elif score >= 50:
+            color = "#fd7e14"  # Naranja
+        else:
+            color = "#dc3545"  # Rojo
+        
+        metric_value = row.get(metric_col, 'N/A')
+        if pd.notna(metric_value) and isinstance(metric_value, (int, float)):
+             metric_display = metric_format.format(metric_value)
+        else:
+             metric_display = "-"
+        
+        st.markdown(
+            f"<span style='color: {color}; font-weight: bold;'>{row['Symbol']}</span> - Score: {score:.0f}",
+            unsafe_allow_html=True
+        )
+        st.caption(f"{row['Company Name'][:35]} | {metric_label}: {metric_display}")
+        
 # =============================================================================
 # SCREENERS PROFESIONALES
 # =============================================================================
@@ -854,26 +891,89 @@ if st.session_state.filters_applied:
             
     with tab_rankings:
         st.markdown("### 🏆 Rankings por Categorías")
+        st.markdown("Mostrando los 10 mejores resultados de tu búsqueda para cada factor clave.")
+        st.markdown("---")
+
         if not filtered_df.empty:
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.markdown("#### 💎 Top Value")
-                if 'Value_Score' in filtered_df.columns:
-                    for _, row in filtered_df.nlargest(10, 'Value_Score').iterrows():
-                        st.markdown(f"**{row['Symbol']}** | Score: {row['Value_Score']:.0f} | P/E: {row.get('PE Ratio', 'N/A'):.1f}")
-                        st.caption(row['Company Name'])
+                render_ranking_card(
+                    title="Top Value",
+                    emoji="💎",
+                    df=filtered_df,
+                    score_col='Value_Score',
+                    metric_col='PE Ratio',
+                    metric_label='P/E',
+                    metric_format="{:.1f}"
+                )
             with col2:
-                st.markdown("#### 🚀 Top Growth")
-                if 'Growth_Score' in filtered_df.columns:
-                     for _, row in filtered_df.nlargest(10, 'Growth_Score').iterrows():
-                        st.markdown(f"**{row['Symbol']}** | Score: {row['Growth_Score']:.0f} | Rev Gr: {row.get('Rev. Growth', 'N/A'):.1f}%")
-                        st.caption(row['Company Name'])
+                render_ranking_card(
+                    title="Top Growth",
+                    emoji="🚀",
+                    df=filtered_df,
+                    score_col='Growth_Score',
+                    metric_col='Rev. Growth',
+                    metric_label='Rev. Gr.',
+                    metric_format="{:.1f}%"
+                )
             with col3:
-                st.markdown("#### 🏅 Top Quality")
-                if 'Quality_Score' in filtered_df.columns:
-                    for _, row in filtered_df.nlargest(10, 'Quality_Score').iterrows():
-                        st.markdown(f"**{row['Symbol']}** | Score: {row['Quality_Score']:.0f} | ROE: {row.get('ROE', 'N/A'):.1f}%")
-                        st.caption(row['Company Name'])
+                render_ranking_card(
+                    title="Top Quality",
+                    emoji="🏅",
+                    df=filtered_df,
+                    score_col='Quality_Score',
+                    metric_col='ROE',
+                    metric_label='ROE',
+                    metric_format="{:.1f}%"
+                )
+
+            st.markdown("<br>", unsafe_allow_html=True) # Espacio vertical
+            
+            col4, col5, col6 = st.columns(3)
+            with col4:
+                render_ranking_card(
+                    title="Top Momentum",
+                    emoji="📈",
+                    df=filtered_df,
+                    score_col='Momentum_Score',
+                    metric_col='Return 1Y',
+                    metric_label='1Y Ret',
+                    metric_format="{:.1f}%"
+                )
+            with col5:
+                # El ranking de dividendos es especial, se ordena por Yield, no por score
+                st.markdown("#### 💰 Top Dividend")
+                dividend_df = filtered_df[filtered_df['Div. Yield'] > 0].nlargest(10, 'Div. Yield')
+                if not dividend_df.empty:
+                    for _, row in dividend_df.iterrows():
+                        yield_val = row['Div. Yield']
+                        payout = row.get('Payout Ratio', 'N/A')
+                        
+                        # Colorear basado en la sostenibilidad del payout
+                        if pd.notna(payout) and payout < 70:
+                            color = "#28a745" # Verde
+                        else:
+                            color = "#fd7e14" # Naranja
+
+                        payout_display = f"{payout:.1f}%" if pd.notna(payout) else "-"
+                        st.markdown(
+                            f"<span style='color: {color}; font-weight: bold;'>{row['Symbol']}</span> - Yield: {yield_val:.2f}%",
+                            unsafe_allow_html=True
+                        )
+                        st.caption(f"{row['Company Name'][:35]} | Payout: {payout_display}")
+                else:
+                    st.caption("No hay empresas con dividendo en los resultados.")
+
+            with col6:
+                render_ranking_card(
+                    title="Top Financial Health",
+                    emoji="🏥",
+                    df=filtered_df,
+                    score_col='Financial_Health_Score',
+                    metric_col='Current Ratio',
+                    metric_label='Current R.',
+                    metric_format="{:.2f}"
+                )
         else:
             st.warning("⚠️ No hay datos para mostrar rankings.")
 
