@@ -541,20 +541,6 @@ if apply_basic:
     st.session_state.filters_applied = True
 
 # =============================================================================
-# ÁREA PRINCIPAL - FILTROS AVANZADOS Y RESULTADOS
-# =============================================================================
-
-# Crear pestañas para organizar el contenido
-tab_filters, tab_results, tab_analysis, tab_rankings, tab_sector, tab_export = st.tabs([
-    "⚙️ Filtros Avanzados", 
-    "📊 Resultados", 
-    "📈 Análisis Visual",
-    "🏆 Rankings",
-    "🎯 Análisis Sectorial",
-    "💾 Exportar"
-])
-
-# =============================================================================
 # ÁREA PRINCIPAL - PESTAÑAS
 # =============================================================================
 tab_filters, tab_results, tab_analysis, tab_rankings, tab_sector, tab_export = st.tabs(["⚙️ Filtros Avanzados", "📊 Resultados", "📈 Análisis Visual", "🏆 Rankings", "🎯 Análisis Sectorial", "💾 Exportar"])
