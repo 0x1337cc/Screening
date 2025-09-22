@@ -4563,8 +4563,11 @@ if st.session_state.filters_applied:
                             ),
                         }
                     )
+                    
+                    if st.checkbox("🔒 Lock View (prevent auto-refresh)", key="lock_view"):
+                        html_table = create_beautiful_html_table(df_display)
+                        st.markdown(html_table, unsafe_allow_html=True)
             
-            # TAB 2: GRÁFICOS
             with result_tabs[1]:
                 st.markdown("### 📈 Análisis Visual")
                 
