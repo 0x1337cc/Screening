@@ -4,4 +4,4 @@ streamlit
 plotly
 scipy
 matplotlib
-xlswriter
+xlsxwriter
