@@ -1218,7 +1218,144 @@ SCREENERS = {
         "description": "Construye tu propio screener con filtros personalizados",
         "filters": {}
     },
+
+    "🇮🇳 India - Filtros Optimizados": {
+        "description": "India - Filtros mínimos para máximos resultados",
+        "filters": {
+            "countries": ["India"],
+            "market_cap_min": 10e6,  # Reduced from 100M to 10M
+ 
+        }
+    },
     
+    "🇨🇳 China Tech Focus": {
+        "description": "Empresas tecnológicas chinas",
+        "filters": {
+            "countries": ["China"],
+            "sectors": ["Technology", "Communication Services"],
+            "market_cap_min": 50e6,  # Reduced from 500M to 50M
+      
+        }
+    },
+    
+    "🌏 Asia Emergente Básico": {
+        "description": "Indonesia, Tailandia, Malasia, Filipinas, Vietnam",
+        "filters": {
+            "countries": ["Indonesia", "Thailand", "Malaysia", "Philippines", "Vietnam"],
+            "market_cap_min": 10e6,  # Reduced from 200M to 10M
+
+        }
+    },
+    
+    "🌎 LATAM Oportunidades": {
+        "description": "Brasil, México, Argentina, Chile, Colombia, Perú",
+        "filters": {
+            "countries": ["Brazil", "Mexico", "Argentina", "Chile", "Colombia", "Peru"],
+            "market_cap_min": 10e6,  # Reduced from 100M to 10M
+
+        }
+    },
+    
+    "🌍 MENA Básico": {
+        "description": "Medio Oriente y África",
+        "filters": {
+            "countries": ["Saudi Arabia", "United Arab Emirates", "Turkey", "Egypt", "South Africa", "Israel"],
+            "market_cap_min": 50e6,  
+        }
+    },
+    
+    "🔴 Mercados Frontera": {
+        "description": "Países con datos muy limitados",
+        "filters": {
+            "countries": ["Pakistan", "Bangladesh", "Nigeria", "Kenya", "Morocco", "Sri Lanka"],
+        }
+    },
+    
+    "🏛️ Europa del Este": {
+        "description": "Polonia, Grecia, Rumania, República Checa, Hungría",
+        "filters": {
+            "countries": ["Poland", "Greece", "Romania", "Czech Republic", "Hungary"],
+            "market_cap_min": 10e6,  # Reduced from 100M to 10M
+            # Removed PE, PB, ROE, and debt filters
+        }
+    },
+    
+    "🌐 Global Ex-USA Simplificado": {
+        "description": "Todo excepto USA",
+        "filters": {
+            "exclude_countries": ["United States", "US OTC"],
+            "market_cap_min": 100e6,  # Reduced from 500M to 100M
+            # Removed PE and PB filters
+        }
+    },
+    
+    "💎 Emergentes Value Simple": {
+        "description": "Valor en mercados emergentes",
+        "filters": {
+            "countries": ["India", "China", "Brazil", "Mexico", "Indonesia", "Turkey", "Thailand"],
+            "market_cap_min": 100e6,  # Reduced from 1B to 100M
+            "pe_max": 20.0,  # Increased from 12 to 20
+            # Removed PB and return filters
+        }
+    },
+    
+    "🚀 Emergentes Growth Simple": {
+        "description": "Crecimiento en emergentes",
+        "filters": {
+            "countries": ["India", "China", "Brazil", "Indonesia", "Vietnam", "Philippines"],
+            "market_cap_min": 50e6,  # Reduced from 500M to 50M
+            # Removed growth and return filters (often missing data)
+        }
+    },
+    
+    "🏦 Bancos Globales Ex-USA": {
+        "description": "Bancos fuera de USA",
+        "filters": {
+            "exclude_countries": ["United States", "US OTC"],
+            "sectors": ["Financials"],
+            "market_cap_min": 100e6,  # Reduced from 1B to 100M
+            # Removed PE, PB, and ROE filters
+        }
+    },
+    
+    "⚡ Asia Pacífico Large Cap": {
+        "description": "Grandes empresas de Asia-Pacífico",
+        "filters": {
+            "countries": ["Japan", "China", "Hong Kong", "Singapore", "South Korea", "Taiwan", "Australia"],
+            "market_cap_min": 1e9,  # Reduced from 10B to 1B
+            # Removed PE, debt, and return filters
+        }
+    },
+    
+    "🌟 BRICS Oportunidades": {
+        "description": "Brasil, Rusia, India, China, Sudáfrica",
+        "filters": {
+            "countries": ["Brazil", "Russia", "India", "China", "South Africa"],
+            "market_cap_min": 50e6,  # Reduced from 500M to 50M
+            # Removed PE and return filters
+        }
+    },
+    
+    "📉 Emergentes Oversold": {
+        "description": "Acciones castigadas en emergentes",
+        "filters": {
+            "exclude_countries": ["United States", "US OTC", "United Kingdom", "Germany", "France", "Japan"],
+            "market_cap_min": 10e6,  # Reduced from 200M to 10M
+            "return_1y_max": 0.0,  # Changed from -30% to 0% (less restrictive)
+            # Removed return_3m and PE filters
+        }
+    },
+    
+    "🎯 Mínimos Datos Requeridos": {
+        "description": "Para cualquier país - Solo usa Market Cap, Sector y Retornos (siempre disponibles)",
+        "filters": {
+            "market_cap_min": 100e6,
+            "market_cap_max": 100e9,
+            "return_1y_min": -50.0,
+            "return_1y_max": 500.0,
+            "return_1m_min": -20.0
+        }
+    }, 
     "🌍 Campeones de Valor Global": {
         "description": "Mejores oportunidades de valor mundial (P/E < 12, P/B < 1.5, FCF Yield > 5%)",
         "filters": {
@@ -1867,6 +2004,49 @@ def create_beautiful_html_table(df):
     
     return html_table
 
+def get_available_filters_for_countries(df, countries):
+    """Returns which filters have sufficient data for selected countries"""
+    if countries:
+        country_df = df[df['Country'].isin(countries)]
+    else:
+        country_df = df
+    
+    # Define minimum data threshold (10% of companies must have data)
+    min_coverage = 0.1
+    available_filters = {}
+    
+    filter_groups = {
+        'valoracion': ['PE Ratio', 'PB Ratio', 'PS Ratio', 'PEG Ratio'],
+        'crecimiento': ['Rev. Growth', 'EPS Growth', 'Rev Gr. Next Y'],
+        'rentabilidad': ['ROE', 'ROA', 'ROIC', 'Profit Margin'],
+        'dividendos': ['Div. Yield', 'Payout Ratio', 'Years'],
+        'salud': ['Current Ratio', 'Debt / Equity', 'Z-Score'],
+        'tecnico': ['RSI', 'Return 1Y', 'Beta (5Y)']
+    }
+    
+    for group, metrics in filter_groups.items():
+        available_filters[group] = []
+        for metric in metrics:
+            if metric in country_df.columns:
+                coverage = country_df[metric].notna().sum() / len(country_df)
+                if coverage >= min_coverage:
+                    available_filters[group].append(metric)
+    
+    return available_filters
+
+def disable_filter_if_no_data(df, countries, metric_name):
+    """Check if a metric has sufficient data for selected countries"""
+    if countries:
+        country_df = df[df['Country'].isin(countries)]
+    else:
+        country_df = df
+    
+    if metric_name not in country_df.columns:
+        return True  # Disable if column doesn't exist
+    
+    coverage = country_df[metric_name].notna().sum() / len(country_df)
+    return coverage < 0.1  # Disable if less than 10% coverage
+
 # =============================================================================
 # HEADER PRINCIPAL
 # =============================================================================
@@ -1874,7 +2054,7 @@ def create_beautiful_html_table(df):
 st.markdown("""
 <div style='text-align: center; padding: 30px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; margin-bottom: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.3);'>
     <h1 style='margin: 0; color: #ffffff; font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);'>
-        🌍 BQuant Global Professional Stock Screener
+        🌍 BQuant Global Stock Screener (By @Gsnchez)
     </h1>
     <p style='color: #f0f0f0; margin-top: 15px; font-size: 1.2em; font-weight: 300;'>
         Análisis avanzado de <strong>68,000+ acciones globales</strong> | <strong>89 países</strong> | <strong>270+ métricas</strong>
@@ -2618,6 +2798,33 @@ with main_tab1:
             
             st.markdown('<div class="section-header">🌍 Filtros Geográficos</div>', unsafe_allow_html=True)
             
+            # Country data quality tiers
+            COUNTRY_DATA_TIERS = {
+                'Tier 1 - Cobertura Completa': [
+                    'United States', 'US OTC', 'United Kingdom', 'Germany', 
+                    'Japan', 'Canada', 'France', 'Switzerland', 'Australia', 'Netherlands'
+                ],
+                'Tier 2 - Buena Cobertura': [
+                    'Spain', 'Italy', 'Sweden', 'Norway', 'Denmark', 'Belgium', 
+                    'Hong Kong', 'Singapore', 'Finland', 'Austria', 'Ireland', 'New Zealand'
+                ],
+                'Tier 3 - Cobertura Moderada': [
+                    'China', 'India', 'Brazil', 'South Korea', 'Taiwan', 
+                    'Mexico', 'Poland', 'Israel', 'Russia', 'Greece', 'Portugal'
+                ],
+                'Tier 4 - Cobertura Básica': [
+                    'Indonesia', 'Thailand', 'Malaysia', 'Philippines', 'Vietnam',
+                    'Turkey', 'Saudi Arabia', 'United Arab Emirates', 'Egypt', 
+                    'Argentina', 'Chile', 'Colombia', 'Peru', 'Pakistan', 'Bangladesh'
+                ]
+            }
+            
+            def get_country_tier(country):
+                for tier, countries in COUNTRY_DATA_TIERS.items():
+                    if country in countries:
+                        return tier
+                return 'Tier 5 - Cobertura Muy Limitada'
+            
             # Presets rápidos
             st.markdown("###### Presets Rápidos")
             cols = st.columns(10)
@@ -2660,16 +2867,32 @@ with main_tab1:
                 help="Elige incluir o excluir países específicos"
             )
             
-            # Multiselect de países
+            # Multiselect de países con indicador de calidad de datos
             if filter_mode == "Incluir Países":
+                # Create formatted options with data quality indicators
+                country_options = []
+                for country in country_counts.index:
+                    tier = get_country_tier(country)
+                    if 'Tier 1' in tier:
+                        emoji = "🟢"
+                    elif 'Tier 2' in tier:
+                        emoji = "🟡"
+                    elif 'Tier 3' in tier:
+                        emoji = "🟠"
+                    elif 'Tier 4' in tier:
+                        emoji = "🔴"
+                    else:
+                        emoji = "⚫"
+                    country_options.append(country)
+                
                 countries_filter = st.multiselect(
                     "Seleccionar países a incluir:",
-                    options=country_counts.index.tolist(),
+                    options=country_options,
                     default=countries_filter,
-                    format_func=lambda x: f"{x} ({country_counts[x]:,} acciones)",
+                    format_func=lambda x: f"{x} ({country_counts[x]:,} acciones) {['🟢' if 'Tier 1' in get_country_tier(x) else '🟡' if 'Tier 2' in get_country_tier(x) else '🟠' if 'Tier 3' in get_country_tier(x) else '🔴' if 'Tier 4' in get_country_tier(x) else '⚫'][0]}",
                     key="countries_include",
                     on_change=mark_filters_as_modified,
-                    help="Selecciona países específicos para incluir en el screening"
+                    help="🟢 Excelente | 🟡 Buena | 🟠 Moderada | 🔴 Básica | ⚫ Muy Limitada"
                 )
                 st.session_state.countries_filter = countries_filter
             else:
@@ -2677,12 +2900,189 @@ with main_tab1:
                     "Seleccionar países a excluir:",
                     options=country_counts.index.tolist(),
                     default=exclude_countries,
-                    format_func=lambda x: f"{x} ({country_counts[x]:,} acciones)",
+                    format_func=lambda x: f"{x} ({country_counts[x]:,} acciones) {['🟢' if 'Tier 1' in get_country_tier(x) else '🟡' if 'Tier 2' in get_country_tier(x) else '🟠' if 'Tier 3' in get_country_tier(x) else '🔴' if 'Tier 4' in get_country_tier(x) else '⚫'][0]}",
                     key="countries_exclude",
                     on_change=mark_filters_as_modified,
-                    help="Selecciona países para excluir del screening"
+                    help="🟢 Excelente | 🟡 Buena | 🟠 Moderada | 🔴 Básica | ⚫ Muy Limitada"
                 )
                 st.session_state.exclude_countries = exclude_countries
+            
+            # DATA COVERAGE ANALYSIS SECTION
+            if countries_filter or exclude_countries:
+                st.markdown("---")
+                st.markdown("##### 📊 Análisis de Cobertura de Datos")
+                
+                # Get the dataframe for selected countries
+                if filter_mode == "Incluir Países" and countries_filter:
+                    selected_countries_df = df[df['Country'].isin(countries_filter)]
+                    selected_countries_list = countries_filter
+                elif filter_mode == "Excluir Países" and exclude_countries:
+                    selected_countries_df = df[~df['Country'].isin(exclude_countries)]
+                    selected_countries_list = [c for c in df['Country'].unique() if c not in exclude_countries]
+                else:
+                    selected_countries_df = df
+                    selected_countries_list = list(df['Country'].unique())
+                
+                # Calculate detailed coverage metrics
+                coverage_categories = {
+                    '📊 Valoración Fundamental': ['PE Ratio', 'PB Ratio', 'PS Ratio', 'PEG Ratio', 'EV/EBITDA'],
+                    '📈 Crecimiento': ['Rev. Growth', 'EPS Growth', 'Rev Gr. Next Y', 'EPS Gr. Next Y'],
+                    '💎 Rentabilidad': ['ROE', 'ROA', 'ROIC', 'Profit Margin', 'Gross Margin'],
+                    '🏥 Salud Financiera': ['Current Ratio', 'Debt / Equity', 'Z-Score', 'FCF'],
+                    '💵 Dividendos': ['Div. Yield', 'Payout Ratio', 'Years', 'Div. Growth'],
+                    '📉 Técnico': ['RSI', 'Beta (5Y)', 'Return 1Y', 'Rel. Volume'],
+                    '🎯 Estimaciones Analistas': ['Forward PE', 'Analysts', 'PT Upside', 'Rating']
+                }
+                
+                coverage_scores = {}
+                missing_categories = []
+                
+                for category, metrics in coverage_categories.items():
+                    available_count = 0
+                    total_data_points = 0
+                    
+                    for metric in metrics:
+                        if metric in selected_countries_df.columns:
+                            non_null = selected_countries_df[metric].notna().sum()
+                            total_data_points += non_null
+                            if non_null > len(selected_countries_df) * 0.1:  # At least 10% coverage
+                                available_count += 1
+                    
+                    if len(metrics) > 0:
+                        coverage_pct = (available_count / len(metrics)) * 100
+                        coverage_scores[category] = coverage_pct
+                        if coverage_pct < 20:
+                            missing_categories.append(category)
+                
+                # Calculate overall coverage
+                avg_coverage = sum(coverage_scores.values()) / len(coverage_scores) if coverage_scores else 0
+                
+                # Determine tier distribution of selected countries
+                tier_distribution = {}
+                for country in selected_countries_list[:20]:  # Limit to first 20 for performance
+                    tier = get_country_tier(country)
+                    tier_name = tier.split(' - ')[0]
+                    tier_distribution[tier_name] = tier_distribution.get(tier_name, 0) + 1
+                
+                # Display coverage alert based on average coverage
+                if avg_coverage < 30:
+                    st.error("""
+                    ⚠️ **COBERTURA DE DATOS MUY LIMITADA**
+                    
+                    Los países seleccionados tienen datos muy escasos. **Recomendaciones críticas:**
+                    - ✅ **USA SOLO ESTOS FILTROS:** Capitalización de mercado, Sector, País, Retornos básicos
+                    - ❌ **EVITA:** Estimaciones de analistas, ratios complejos, métricas de crecimiento futuro
+                    - 💡 **ALTERNATIVA:** Considera agregar países con mejor cobertura (USA, UK, Alemania, Japón)
+                    """)
+                elif avg_coverage < 60:
+                    st.warning("""
+                    ⚠️ **COBERTURA DE DATOS PARCIAL**
+                    
+                    Los países seleccionados tienen cobertura moderada. **Sugerencias:**
+                    - ✅ **FILTROS RECOMENDADOS:** P/E, P/B, ROE, Capitalización, Crecimiento histórico
+                    - ⚠️ **USO LIMITADO:** Estimaciones futuras, datos de analistas, métricas avanzadas
+                    - 💡 **TIP:** Los filtros de dividendos y técnicos pueden tener datos incompletos
+                    """)
+                else:
+                    st.success("""
+                    ✅ **BUENA COBERTURA DE DATOS**
+                    
+                    Los países seleccionados tienen datos suficientes para la mayoría de análisis.
+                    Puedes usar la mayoría de filtros con confianza.
+                    """)
+                
+                # Show detailed coverage breakdown
+                col1, col2 = st.columns([3, 1])
+                
+                with col1:
+                    # Coverage by category bars
+                    st.markdown("**Cobertura por Categoría de Métricas:**")
+                    
+                    for category, score in coverage_scores.items():
+                        # Determine color based on coverage
+                        if score >= 80:
+                            color = '#10b981'
+                            status = 'Excelente'
+                        elif score >= 60:
+                            color = '#3b82f6'
+                            status = 'Buena'
+                        elif score >= 40:
+                            color = '#f59e0b'
+                            status = 'Limitada'
+                        elif score >= 20:
+                            color = '#ef4444'
+                            status = 'Muy Limitada'
+                        else:
+                            color = '#991b1b'
+                            status = 'Sin Datos'
+                        
+                        st.markdown(f"""
+                        <div style="margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span style="color: #c9d1d9; font-size: 13px;">{category}</span>
+                                <span style="color: {color}; font-size: 13px; font-weight: 600;">{score:.0f}% - {status}</span>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 20px; position: relative; overflow: hidden;">
+                                <div style="background: linear-gradient(90deg, {color}, {color}CC); 
+                                        height: 100%; width: {score}%; border-radius: 10px; 
+                                        transition: width 0.3s ease;">
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                with col2:
+                    # Summary metrics
+                    st.markdown("**Resumen:**")
+                    st.metric("Cobertura Global", f"{avg_coverage:.0f}%", 
+                            delta=f"{avg_coverage-50:.0f}%" if avg_coverage != 50 else None)
+                    
+                    # Tier distribution
+                    if tier_distribution:
+                        st.markdown("**Calidad de Países:**")
+                        for tier, count in sorted(tier_distribution.items()):
+                            tier_emoji = {'Tier 1': '🟢', 'Tier 2': '🟡', 'Tier 3': '🟠', 
+                                        'Tier 4': '🔴', 'Tier 5': '⚫'}.get(tier, '⚫')
+                            st.markdown(f"{tier_emoji} {tier}: {count}")
+                
+                # Specific recommendations based on selection
+                if missing_categories:
+                    with st.expander("⚠️ Ver Filtros No Recomendados", expanded=False):
+                        st.markdown("**Estas categorías tienen datos insuficientes para los países seleccionados:**")
+                        for cat in missing_categories:
+                            st.markdown(f"- {cat}")
+                        st.markdown("\n**Recomendación:** Evita usar filtros de estas categorías o pueden no dar resultados.")
+                
+                # Smart filter suggestions
+                if avg_coverage < 60:
+                    with st.expander("💡 Filtros Optimizados para tus Países", expanded=True):
+                        st.markdown("**Basado en la cobertura de datos, te sugerimos usar estos filtros:**")
+                        
+                        if avg_coverage >= 40:
+                            st.markdown("""
+                            ✅ **Filtros Recomendados:**
+                            - Capitalización de Mercado (min/max)
+                            - P/E Ratio (si aparece en cobertura > 40%)
+                            - P/B Ratio
+                            - ROE básico
+                            - Retorno 1 Año
+                            - Sector e Industria
+                            """)
+                        else:
+                            st.markdown("""
+                            ✅ **Filtros Básicos Solamente:**
+                            - Capitalización de Mercado
+                            - Sector
+                            - Retornos (1M, 3M, 1Y)
+                            - Volumen
+                            
+                            ❌ **Evitar completamente:**
+                            - Estimaciones de analistas
+                            - Métricas de crecimiento futuro
+                            - Scores complejos
+                            - Ratios avanzados
+                            """)
+        
         st.markdown('</div>', unsafe_allow_html=True)
     
     # =========================================================================
@@ -2692,89 +3092,349 @@ with main_tab1:
         st.markdown('<div class="filter-section">', unsafe_allow_html=True)
         st.markdown('<div class="section-header">📊 Métricas de Valoración</div>', unsafe_allow_html=True)
         
+        # DATA COVERAGE CHECK FOR VALUATION METRICS
+        disable_filters = {}
+        show_limited_warning = False
+        available_valuation_metrics = []
+        
+        if 'countries_filter' in st.session_state and st.session_state.countries_filter:
+            # Get data for selected countries
+            selected_df = df[df['Country'].isin(st.session_state.countries_filter)]
+            
+            # Check each valuation metric
+            valuation_metrics = {
+                'PE Ratio': 'P/E',
+                'Forward PE': 'P/E Futuro',
+                'PB Ratio': 'P/B',
+                'PS Ratio': 'P/S',
+                'Forward PS': 'P/S Futuro',
+                'PEG Ratio': 'PEG',
+                'P/FCF': 'P/FCF',
+                'P/OCF': 'P/OCF',
+                'P/EBITDA': 'P/EBITDA',
+                'P/TBV': 'P/TBV',
+                'P/FFO': 'P/FFO',
+                'EV/Sales': 'EV/Sales',
+                'EV/EBITDA': 'EV/EBITDA',
+                'EV/EBIT': 'EV/EBIT',
+                'EV/FCF': 'EV/FCF',
+                'FCF Yield': 'FCF Yield',
+                'Earnings Yield': 'Earnings Yield',
+                'Graham (%)': 'Graham',
+                'Lynch (%)': 'Lynch'
+            }
+            
+            for metric, display_name in valuation_metrics.items():
+                if metric in selected_df.columns:
+                    coverage = (selected_df[metric].notna().sum() / len(selected_df)) * 100
+                    if coverage >= 10:
+                        available_valuation_metrics.append((metric, display_name, coverage))
+                    else:
+                        disable_filters[metric] = True
+                else:
+                    disable_filters[metric] = True
+            
+            # Determine warning level
+            if len(available_valuation_metrics) < 4:
+                show_limited_warning = True
+        
+        # SHOW WARNING IF DATA IS LIMITED
+        if show_limited_warning:
+            st.error(f"""
+            ⚠️ **Datos de valoración muy limitados para los países seleccionados**
+            
+            Solo {len(available_valuation_metrics)} métricas de valoración tienen datos suficientes.
+            **Métricas disponibles:** {', '.join([m[1] for m in available_valuation_metrics[:5]])}
+            
+            **Recomendación:** Usa filtros más básicos o cambia la selección de países.
+            """)
+        elif len(available_valuation_metrics) < 10 and len(available_valuation_metrics) > 0:
+            st.warning(f"""
+            ⚠️ **Cobertura parcial de datos de valoración**
+            
+            {len(available_valuation_metrics)} de 19 métricas disponibles.
+            Algunos filtros pueden no tener datos completos.
+            """)
+        
+        # SHOW AVAILABLE METRICS IF LIMITED
+        if available_valuation_metrics and len(available_valuation_metrics) < 15:
+            with st.expander("📊 Ver métricas disponibles y cobertura", expanded=False):
+                for metric, display_name, coverage in sorted(available_valuation_metrics, key=lambda x: x[2], reverse=True):
+                    color = '#10b981' if coverage >= 70 else '#f59e0b' if coverage >= 40 else '#ef4444'
+                    st.markdown(f"""
+                    <div style="margin-bottom: 8px;">
+                        <span style="color: {color};">●</span> 
+                        <span style="color: #c9d1d9;">{display_name}:</span> 
+                        <span style="color: {color}; font-weight: 600;">{coverage:.0f}% cobertura</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
         st.markdown("###### Ratios Precio")
         col1, col2, col3, col4 = st.columns(4)
+        
         with col1:
-            pe_min = st.number_input("P/E Mín", value=preset_filters.get('pe_min', 0.0), key="pe_min", on_change=mark_filters_as_modified)
-            pe_max = st.number_input("P/E Máx", value=preset_filters.get('pe_max', 100.0), key="pe_max", on_change=mark_filters_as_modified)
+            pe_disabled = disable_filters.get('PE Ratio', False)
+            if pe_disabled:
+                st.markdown("🔴 **P/E - Sin datos**")
+                pe_min = st.number_input("P/E Mín", value=0.0, key="pe_min", disabled=True, 
+                                        help="Sin datos disponibles para los países seleccionados")
+                pe_max = st.number_input("P/E Máx", value=100.0, key="pe_max", disabled=True,
+                                        help="Sin datos disponibles para los países seleccionados")
+            else:
+                pe_min = st.number_input("P/E Mín", value=preset_filters.get('pe_min', 0.0), 
+                                        key="pe_min", on_change=mark_filters_as_modified,
+                                        help=METRIC_DESCRIPTIONS.get("pe_ratio", "Precio/Beneficios"))
+                pe_max = st.number_input("P/E Máx", value=preset_filters.get('pe_max', 100.0), 
+                                        key="pe_max", on_change=mark_filters_as_modified,
+                                        help=METRIC_DESCRIPTIONS.get("pe_ratio", "Precio/Beneficios"))
+        
         with col2:
-            forward_pe_min = st.number_input("P/E Futuro Mín", value=preset_filters.get('forward_pe_min', 0.0), key="fpe_min", on_change=mark_filters_as_modified)
-            forward_pe_max = st.number_input("P/E Futuro Máx", value=preset_filters.get('forward_pe_max', 100.0), key="fpe_max", on_change=mark_filters_as_modified)
+            fpe_disabled = disable_filters.get('Forward PE', False)
+            if fpe_disabled:
+                st.markdown("🔴 **P/E Futuro - Sin datos**")
+                forward_pe_min = st.number_input("P/E Futuro Mín", value=0.0, key="fpe_min", disabled=True)
+                forward_pe_max = st.number_input("P/E Futuro Máx", value=100.0, key="fpe_max", disabled=True)
+            else:
+                forward_pe_min = st.number_input("P/E Futuro Mín", value=preset_filters.get('forward_pe_min', 0.0), 
+                                                key="fpe_min", on_change=mark_filters_as_modified,
+                                                help=METRIC_DESCRIPTIONS.get("forward_pe", "P/E basado en estimaciones"))
+                forward_pe_max = st.number_input("P/E Futuro Máx", value=preset_filters.get('forward_pe_max', 100.0), 
+                                                key="fpe_max", on_change=mark_filters_as_modified)
+        
         with col3:
-            pb_min = st.number_input("P/B Mín", value=preset_filters.get('pb_min', 0.0), key="pb_min", on_change=mark_filters_as_modified)
-            pb_max = st.number_input("P/B Máx", value=preset_filters.get('pb_max', 10.0), key="pb_max", on_change=mark_filters_as_modified)
+            pb_disabled = disable_filters.get('PB Ratio', False)
+            if pb_disabled:
+                st.markdown("🔴 **P/B - Sin datos**")
+                pb_min = st.number_input("P/B Mín", value=0.0, key="pb_min", disabled=True)
+                pb_max = st.number_input("P/B Máx", value=10.0, key="pb_max", disabled=True)
+            else:
+                pb_min = st.number_input("P/B Mín", value=preset_filters.get('pb_min', 0.0), 
+                                        key="pb_min", on_change=mark_filters_as_modified,
+                                        help=METRIC_DESCRIPTIONS.get("pb_ratio", "Precio/Valor Libro"))
+                pb_max = st.number_input("P/B Máx", value=preset_filters.get('pb_max', 10.0), 
+                                        key="pb_max", on_change=mark_filters_as_modified)
+        
         with col4:
-            ps_min = st.number_input("P/S Mín", value=preset_filters.get('ps_min', 0.0), key="ps_min", on_change=mark_filters_as_modified)
-            ps_max = st.number_input("P/S Máx", value=preset_filters.get('ps_max', 20.0), key="ps_max", on_change=mark_filters_as_modified)
+            ps_disabled = disable_filters.get('PS Ratio', False)
+            if ps_disabled:
+                st.markdown("🔴 **P/S - Sin datos**")
+                ps_min = st.number_input("P/S Mín", value=0.0, key="ps_min", disabled=True)
+                ps_max = st.number_input("P/S Máx", value=20.0, key="ps_max", disabled=True)
+            else:
+                ps_min = st.number_input("P/S Mín", value=preset_filters.get('ps_min', 0.0), 
+                                        key="ps_min", on_change=mark_filters_as_modified,
+                                        help=METRIC_DESCRIPTIONS.get("ps_ratio", "Precio/Ventas"))
+                ps_max = st.number_input("P/S Máx", value=preset_filters.get('ps_max', 20.0), 
+                                        key="ps_max", on_change=mark_filters_as_modified)
         
         st.markdown("###### Más Ratios Precio")
         col1, col2, col3, col4 = st.columns(4)
+        
         with col1:
-            forward_ps_min = st.number_input("P/S Futuro Mín", value=preset_filters.get('forward_ps_min', 0.0), key="fps_min", on_change=mark_filters_as_modified)
-            forward_ps_max = st.number_input("P/S Futuro Máx", value=preset_filters.get('forward_ps_max', 20.0), key="fps_max", on_change=mark_filters_as_modified)
+            fps_disabled = disable_filters.get('Forward PS', False)
+            if fps_disabled:
+                st.markdown("🟠 **P/S Futuro - Limitado**")
+            forward_ps_min = st.number_input("P/S Futuro Mín", value=preset_filters.get('forward_ps_min', 0.0), 
+                                            key="fps_min", on_change=mark_filters_as_modified,
+                                            disabled=fps_disabled)
+            forward_ps_max = st.number_input("P/S Futuro Máx", value=preset_filters.get('forward_ps_max', 20.0), 
+                                            key="fps_max", on_change=mark_filters_as_modified,
+                                            disabled=fps_disabled)
+        
         with col2:
-            peg_min = st.number_input("PEG Mín", value=preset_filters.get('peg_min', 0.0), key="peg_min", on_change=mark_filters_as_modified)
-            peg_max = st.number_input("PEG Máx", value=preset_filters.get('peg_max', 5.0), key="peg_max", on_change=mark_filters_as_modified)
+            peg_disabled = disable_filters.get('PEG Ratio', False)
+            if peg_disabled:
+                st.markdown("🟠 **PEG - Limitado**")
+            peg_min = st.number_input("PEG Mín", value=preset_filters.get('peg_min', 0.0), 
+                                    key="peg_min", on_change=mark_filters_as_modified,
+                                    disabled=peg_disabled,
+                                    help="PEG = P/E / Crecimiento" if not peg_disabled else "Sin datos")
+            peg_max = st.number_input("PEG Máx", value=preset_filters.get('peg_max', 5.0), 
+                                    key="peg_max", on_change=mark_filters_as_modified,
+                                    disabled=peg_disabled)
+        
         with col3:
-            p_fcf_min = st.number_input("P/FCF Mín", value=preset_filters.get('p_fcf_min', 0.0), key="p_fcf_min", on_change=mark_filters_as_modified)
-            p_fcf_max = st.number_input("P/FCF Máx", value=preset_filters.get('p_fcf_max', 100.0), key="p_fcf_max", on_change=mark_filters_as_modified)
+            pfcf_disabled = disable_filters.get('P/FCF', False)
+            p_fcf_min = st.number_input("P/FCF Mín", value=preset_filters.get('p_fcf_min', 0.0), 
+                                    key="p_fcf_min", on_change=mark_filters_as_modified,
+                                    disabled=pfcf_disabled)
+            p_fcf_max = st.number_input("P/FCF Máx", value=preset_filters.get('p_fcf_max', 100.0), 
+                                    key="p_fcf_max", on_change=mark_filters_as_modified,
+                                    disabled=pfcf_disabled)
+        
         with col4:
-            p_ocf_min = st.number_input("P/OCF Mín", value=preset_filters.get('p_ocf_min', 0.0), key="p_ocf_min", on_change=mark_filters_as_modified)
-            p_ocf_max = st.number_input("P/OCF Máx", value=preset_filters.get('p_ocf_max', 100.0), key="p_ocf_max", on_change=mark_filters_as_modified)
+            pocf_disabled = disable_filters.get('P/OCF', False)
+            p_ocf_min = st.number_input("P/OCF Mín", value=preset_filters.get('p_ocf_min', 0.0), 
+                                    key="p_ocf_min", on_change=mark_filters_as_modified,
+                                    disabled=pocf_disabled)
+            p_ocf_max = st.number_input("P/OCF Máx", value=preset_filters.get('p_ocf_max', 100.0), 
+                                    key="p_ocf_max", on_change=mark_filters_as_modified,
+                                    disabled=pocf_disabled)
         
         st.markdown("###### Ratios Adicionales")
         col1, col2, col3, col4 = st.columns(4)
+        
         with col1:
-            p_ebitda_min = st.number_input("P/EBITDA Mín", value=preset_filters.get('p_ebitda_min', 0.0), key="p_ebitda_min", on_change=mark_filters_as_modified)
-            p_ebitda_max = st.number_input("P/EBITDA Máx", value=preset_filters.get('p_ebitda_max', 50.0), key="p_ebitda_max", on_change=mark_filters_as_modified)
+            p_ebitda_min = st.number_input("P/EBITDA Mín", value=preset_filters.get('p_ebitda_min', 0.0), 
+                                        key="p_ebitda_min", on_change=mark_filters_as_modified,
+                                        disabled=disable_filters.get('P/EBITDA', False))
+            p_ebitda_max = st.number_input("P/EBITDA Máx", value=preset_filters.get('p_ebitda_max', 50.0), 
+                                        key="p_ebitda_max", on_change=mark_filters_as_modified,
+                                        disabled=disable_filters.get('P/EBITDA', False))
+        
         with col2:
-            p_tbv_min = st.number_input("P/TBV Mín", value=preset_filters.get('p_tbv_min', 0.0), key="p_tbv_min", on_change=mark_filters_as_modified)
-            p_tbv_max = st.number_input("P/TBV Máx", value=preset_filters.get('p_tbv_max', 10.0), key="p_tbv_max", on_change=mark_filters_as_modified)
+            p_tbv_min = st.number_input("P/TBV Mín", value=preset_filters.get('p_tbv_min', 0.0), 
+                                    key="p_tbv_min", on_change=mark_filters_as_modified,
+                                    disabled=disable_filters.get('P/TBV', False))
+            p_tbv_max = st.number_input("P/TBV Máx", value=preset_filters.get('p_tbv_max', 10.0), 
+                                    key="p_tbv_max", on_change=mark_filters_as_modified,
+                                    disabled=disable_filters.get('P/TBV', False))
+        
         with col3:
-            p_ffo_min = st.number_input("P/FFO Mín", value=preset_filters.get('p_ffo_min', 0.0), key="p_ffo_min", on_change=mark_filters_as_modified)
-            p_ffo_max = st.number_input("P/FFO Máx", value=preset_filters.get('p_ffo_max', 50.0), key="p_ffo_max", on_change=mark_filters_as_modified)
+            p_ffo_min = st.number_input("P/FFO Mín", value=preset_filters.get('p_ffo_min', 0.0), 
+                                    key="p_ffo_min", on_change=mark_filters_as_modified,
+                                    disabled=disable_filters.get('P/FFO', False))
+            p_ffo_max = st.number_input("P/FFO Máx", value=preset_filters.get('p_ffo_max', 50.0), 
+                                    key="p_ffo_max", on_change=mark_filters_as_modified,
+                                    disabled=disable_filters.get('P/FFO', False))
         with col4:
             st.markdown("")
         
+        # ENTERPRISE VALUE SECTION WITH WARNINGS
         st.markdown("###### Ratios Enterprise Value")
+        
+        ev_metrics = ['EV/Sales', 'EV/EBITDA', 'EV/EBIT', 'EV/FCF']
+        ev_coverage = sum(1 for m in ev_metrics if not disable_filters.get(m, False))
+        
+        if ev_coverage < 2:
+            st.info("ℹ️ Métricas EV tienen cobertura muy limitada para los países seleccionados")
+        
         col1, col2, col3, col4 = st.columns(4)
+        
         with col1:
-            ev_sales_min = st.number_input("EV/Sales Mín", value=preset_filters.get('ev_sales_min', 0.0), key="ev_s_min", on_change=mark_filters_as_modified)
-            ev_sales_max = st.number_input("EV/Sales Máx", value=preset_filters.get('ev_sales_max', 20.0), key="ev_s_max", on_change=mark_filters_as_modified)
+            ev_sales_disabled = disable_filters.get('EV/Sales', False)
+            ev_sales_min = st.number_input("EV/Sales Mín", value=preset_filters.get('ev_sales_min', 0.0), 
+                                        key="ev_s_min", on_change=mark_filters_as_modified,
+                                        disabled=ev_sales_disabled)
+            ev_sales_max = st.number_input("EV/Sales Máx", value=preset_filters.get('ev_sales_max', 20.0), 
+                                        key="ev_s_max", on_change=mark_filters_as_modified,
+                                        disabled=ev_sales_disabled)
+        
         with col2:
-            fwd_ev_s_min = st.number_input("EV/Sales Fut Mín", value=preset_filters.get('fwd_ev_s_min', 0.0), key="fwd_ev_s_min", on_change=mark_filters_as_modified)
-            fwd_ev_s_max = st.number_input("EV/Sales Fut Máx", value=preset_filters.get('fwd_ev_s_max', 20.0), key="fwd_ev_s_max", on_change=mark_filters_as_modified)
+            fwd_ev_s_min = st.number_input("EV/Sales Fut Mín", value=preset_filters.get('fwd_ev_s_min', 0.0), 
+                                        key="fwd_ev_s_min", on_change=mark_filters_as_modified,
+                                        disabled=disable_filters.get('Fwd EV/Sales', False))
+            fwd_ev_s_max = st.number_input("EV/Sales Fut Máx", value=preset_filters.get('fwd_ev_s_max', 20.0), 
+                                        key="fwd_ev_s_max", on_change=mark_filters_as_modified,
+                                        disabled=disable_filters.get('Fwd EV/Sales', False))
+        
         with col3:
-            ev_earnings_min = st.number_input("EV/Earnings Mín", value=preset_filters.get('ev_earnings_min', 0.0), key="ev_earn_min", on_change=mark_filters_as_modified)
-            ev_earnings_max = st.number_input("EV/Earnings Máx", value=preset_filters.get('ev_earnings_max', 100.0), key="ev_earn_max", on_change=mark_filters_as_modified)
+            ev_earnings_min = st.number_input("EV/Earnings Mín", value=preset_filters.get('ev_earnings_min', 0.0), 
+                                            key="ev_earn_min", on_change=mark_filters_as_modified,
+                                            disabled=disable_filters.get('EV/Earnings', False))
+            ev_earnings_max = st.number_input("EV/Earnings Máx", value=preset_filters.get('ev_earnings_max', 100.0), 
+                                            key="ev_earn_max", on_change=mark_filters_as_modified,
+                                            disabled=disable_filters.get('EV/Earnings', False))
+        
         with col4:
-            ev_ebitda_min = st.number_input("EV/EBITDA Mín", value=preset_filters.get('ev_ebitda_min', 0.0), key="ev_eb_min", on_change=mark_filters_as_modified)
-            ev_ebitda_max = st.number_input("EV/EBITDA Máx", value=preset_filters.get('ev_ebitda_max', 50.0), key="ev_eb_max", on_change=mark_filters_as_modified)
+            ev_ebitda_disabled = disable_filters.get('EV/EBITDA', False)
+            ev_ebitda_min = st.number_input("EV/EBITDA Mín", value=preset_filters.get('ev_ebitda_min', 0.0), 
+                                        key="ev_eb_min", on_change=mark_filters_as_modified,
+                                        disabled=ev_ebitda_disabled)
+            ev_ebitda_max = st.number_input("EV/EBITDA Máx", value=preset_filters.get('ev_ebitda_max', 50.0), 
+                                        key="ev_eb_max", on_change=mark_filters_as_modified,
+                                        disabled=ev_ebitda_disabled)
         
         st.markdown("###### Más EV Ratios")
         col1, col2, col3, col4 = st.columns(4)
+        
         with col1:
-            ev_ebit_min = st.number_input("EV/EBIT Mín", value=preset_filters.get('ev_ebit_min', 0.0), key="ev_ebit_min", on_change=mark_filters_as_modified)
-            ev_ebit_max = st.number_input("EV/EBIT Máx", value=preset_filters.get('ev_ebit_max', 50.0), key="ev_ebit_max", on_change=mark_filters_as_modified)
+            ev_ebit_min = st.number_input("EV/EBIT Mín", value=preset_filters.get('ev_ebit_min', 0.0), 
+                                        key="ev_ebit_min", on_change=mark_filters_as_modified,
+                                        disabled=disable_filters.get('EV/EBIT', False))
+            ev_ebit_max = st.number_input("EV/EBIT Máx", value=preset_filters.get('ev_ebit_max', 50.0), 
+                                        key="ev_ebit_max", on_change=mark_filters_as_modified,
+                                        disabled=disable_filters.get('EV/EBIT', False))
+        
         with col2:
-            ev_fcf_min = st.number_input("EV/FCF Mín", value=preset_filters.get('ev_fcf_min', 0.0), key="ev_fcf_min", on_change=mark_filters_as_modified)
-            ev_fcf_max = st.number_input("EV/FCF Máx", value=preset_filters.get('ev_fcf_max', 100.0), key="ev_fcf_max", on_change=mark_filters_as_modified)
+            ev_fcf_min = st.number_input("EV/FCF Mín", value=preset_filters.get('ev_fcf_min', 0.0), 
+                                        key="ev_fcf_min", on_change=mark_filters_as_modified,
+                                        disabled=disable_filters.get('EV/FCF', False))
+            ev_fcf_max = st.number_input("EV/FCF Máx", value=preset_filters.get('ev_fcf_max', 100.0), 
+                                        key="ev_fcf_max", on_change=mark_filters_as_modified,
+                                        disabled=disable_filters.get('EV/FCF', False))
         with col3:
             st.markdown("")
         with col4:
             st.markdown("")
         
+        # YIELDS AND FAIR VALUE SECTION
         st.markdown("###### Yields y Fair Value")
+        
+        yields_available = not all(disable_filters.get(m, False) for m in ['FCF Yield', 'Earnings Yield'])
+        if not yields_available:
+            st.warning("⚠️ Yields no disponibles para los países seleccionados. Considera usar ratios P/E y P/B en su lugar.")
+        
         col1, col2, col3, col4 = st.columns(4)
+        
         with col1:
-            fcf_yield_min = st.number_input("FCF Yield Mín %", value=preset_filters.get('fcf_yield_min', 0.0), key="fcf_y_min", on_change=mark_filters_as_modified)
-            earnings_yield_min = st.number_input("Earnings Yield Mín %", value=preset_filters.get('earnings_yield_min', 0.0), key="earn_y_min", on_change=mark_filters_as_modified)
+            fcf_yield_disabled = disable_filters.get('FCF Yield', False)
+            if fcf_yield_disabled:
+                st.markdown("🔴 **FCF Yield - Sin datos**")
+            fcf_yield_min = st.number_input("FCF Yield Mín %", value=preset_filters.get('fcf_yield_min', 0.0), 
+                                        key="fcf_y_min", on_change=mark_filters_as_modified,
+                                        disabled=fcf_yield_disabled,
+                                        help="Flujo de caja libre / Capitalización" if not fcf_yield_disabled else "No disponible")
+            
+            earnings_yield_disabled = disable_filters.get('Earnings Yield', False)
+            earnings_yield_min = st.number_input("Earnings Yield Mín %", value=preset_filters.get('earnings_yield_min', 0.0), 
+                                                key="earn_y_min", on_change=mark_filters_as_modified,
+                                                disabled=earnings_yield_disabled)
+        
         with col2:
-            fcf_ev_min = st.number_input("FCF/EV Mín %", value=preset_filters.get('fcf_ev_min', 0.0), key="fcf_ev_min", on_change=mark_filters_as_modified)
+            fcf_ev_min = st.number_input("FCF/EV Mín %", value=preset_filters.get('fcf_ev_min', 0.0), 
+                                        key="fcf_ev_min", on_change=mark_filters_as_modified,
+                                        disabled=disable_filters.get('FCF/EV', False))
+        
         with col3:
-            graham_upside_min = st.number_input("Graham Upside Mín %", value=preset_filters.get('graham_upside_min', -100.0), key="graham_up", on_change=mark_filters_as_modified)
+            graham_disabled = disable_filters.get('Graham (%)', False)
+            if graham_disabled:
+                st.markdown("🟠 **Graham - Limitado**")
+            graham_upside_min = st.number_input("Graham Upside Mín %", value=preset_filters.get('graham_upside_min', -100.0), 
+                                            key="graham_up", on_change=mark_filters_as_modified,
+                                            disabled=graham_disabled)
+        
         with col4:
-            lynch_upside_min = st.number_input("Lynch Upside Mín %", value=preset_filters.get('lynch_upside_min', -100.0), key="lynch_up", on_change=mark_filters_as_modified)
+            lynch_disabled = disable_filters.get('Lynch (%)', False)
+            if lynch_disabled:
+                st.markdown("🟠 **Lynch - Limitado**")
+            lynch_upside_min = st.number_input("Lynch Upside Mín %", value=preset_filters.get('lynch_upside_min', -100.0), 
+                                            key="lynch_up", on_change=mark_filters_as_modified,
+                                            disabled=lynch_disabled)
+        
+        # SUMMARY OF DATA AVAILABILITY
+        if show_limited_warning or (available_valuation_metrics and len(available_valuation_metrics) < 10):
+            st.markdown("---")
+            st.markdown("##### 💡 Alternativas Recomendadas")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("""
+                **Si los datos son limitados, prueba:**
+                - 📊 Capitalización de Mercado (siempre disponible)
+                - 📈 Retornos históricos (1M, 3M, 1Y)
+                - 🏢 Filtros por Sector
+                - 📉 Volumen de trading
+                """)
+            
+            with col2:
+                st.markdown("""
+                **Países con mejor cobertura:**
+                - 🇺🇸 Estados Unidos
+                - 🇬🇧 Reino Unido
+                - 🇩🇪 Alemania
+                - 🇯🇵 Japón
+                """)
         
         st.markdown('</div>', unsafe_allow_html=True)
     
@@ -3667,36 +4327,97 @@ if st.session_state.filters_applied:
     
     # Mostrar resultados
     with main_tab2:
-        if not filtered_df.empty:
-            # Mensaje de éxito con animación
+        if st.session_state.filters_applied and not filtered_df.empty:
+            
+            # ===== DATA COVERAGE INDICATOR SECTION =====
+            # Calculate data completeness for filtered results
+            key_metrics = ['PE Ratio', 'ROE', 'Rev. Growth', 'Div. Yield', 'Beta (5Y)', 
+                        'Forward PE', 'Analysts', 'EPS Growth', 'Profit Margin']
+            completeness_scores = {}
+            
+            for metric in key_metrics:
+                if metric in filtered_df.columns:
+                    completeness = (filtered_df[metric].notna().sum() / len(filtered_df)) * 100
+                    completeness_scores[metric] = completeness
+            
+            avg_completeness = sum(completeness_scores.values()) / len(completeness_scores) if completeness_scores else 0
+            
+            # Display coverage indicator
+            coverage_color = "#10b981" if avg_completeness >= 70 else "#f59e0b" if avg_completeness >= 40 else "#ef4444"
+            
             st.markdown(f"""
-            <div style='background: linear-gradient(135deg, #10b981, #059669); padding: 15px; border-radius: 10px; margin-bottom: 20px;'>
+            <div style='background: linear-gradient(135deg, {coverage_color}22, {coverage_color}11); 
+                        padding: 15px; border-radius: 10px; margin-bottom: 20px; 
+                        border-left: 4px solid {coverage_color};'>
+                <div style='display: flex; justify-content: space-between; align-items: center;'>
+                    <div>
+                        <h4 style='margin: 0; color: {coverage_color};'>
+                            📊 Calidad de Datos en Resultados: {avg_completeness:.0f}%
+                        </h4>
+                        <p style='margin: 5px 0; color: #c9d1d9; font-size: 0.9em;'>
+                            {"✅ Excelente - Datos completos para análisis detallado" if avg_completeness >= 70 else 
+                            "⚠️ Parcial - Algunos datos pueden faltar, especialmente estimaciones" if avg_completeness >= 40 else
+                            "🔴 Limitada - Muchos campos vacíos, use con precaución"}
+                        </p>
+                    </div>
+                    <div style='text-align: right;'>
+                        <span style='font-size: 2em;'>{
+                            "✅" if avg_completeness >= 70 else 
+                            "⚠️" if avg_completeness >= 40 else "🔴"
+                        }</span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Show detailed coverage breakdown if data is limited
+            if avg_completeness < 70:
+                with st.expander("📋 Ver detalles de campos con datos", expanded=False):
+                    col1, col2, col3 = st.columns(3)
+                    
+                    sorted_metrics = sorted(completeness_scores.items(), key=lambda x: x[1], reverse=True)
+                    for idx, (metric, score) in enumerate(sorted_metrics):
+                        col = [col1, col2, col3][idx % 3]
+                        with col:
+                            color = '#10b981' if score >= 70 else '#f59e0b' if score >= 40 else '#ef4444'
+                            st.markdown(f"""
+                            <div style="margin-bottom: 8px;">
+                                <span style="color: {color};">●</span> 
+                                <strong>{metric}:</strong> 
+                                <span style="color: {color};">{score:.0f}%</span>
+                            </div>
+                            """, unsafe_allow_html=True)
+            
+            # ===== SUCCESS MESSAGE WITH RESULTS SUMMARY =====
+            st.markdown(f"""
+            <div style='background: linear-gradient(135deg, #10b981, #059669); 
+                        padding: 15px; border-radius: 10px; margin-bottom: 20px;'>
                 <h3 style='color: white; margin: 0;'>✅ Encontradas {len(filtered_df):,} acciones que cumplen los criterios</h3>
             </div>
             """, unsafe_allow_html=True)
             
-            # Métricas resumen mejoradas
+            # ===== METRICS SUMMARY =====
             col1, col2, col3, col4, col5, col6 = st.columns(6)
             with col1:
                 st.metric("📊 Resultados", f"{len(filtered_df):,}", 
-                         f"{(len(filtered_df)/len(df)*100):.1f}% del total")
+                        f"{(len(filtered_df)/len(df)*100):.1f}% del total")
             with col2:
                 st.metric("🌍 Países", 
-                         f"{filtered_df['Country'].nunique()}" if 'Country' in filtered_df.columns else "N/D")
+                        f"{filtered_df['Country'].nunique()}" if 'Country' in filtered_df.columns else "N/D")
             with col3:
                 total_mcap = filtered_df['Market Cap'].sum() if 'Market Cap' in filtered_df.columns else 0
                 st.metric("💰 Cap. Total", format_number(total_mcap, prefix="$"))
             with col4:
-                median_pe = filtered_df['PE Ratio'].median() if 'PE Ratio' in filtered_df.columns else 0
+                median_pe = filtered_df['PE Ratio'].median() if 'PE Ratio' in filtered_df.columns and not filtered_df['PE Ratio'].isna().all() else 0
                 st.metric("P/E Mediano", f"{median_pe:.1f}")
             with col5:
-                avg_roe = filtered_df['ROE'].mean() if 'ROE' in filtered_df.columns else 0
+                avg_roe = filtered_df['ROE'].mean() if 'ROE' in filtered_df.columns and not filtered_df['ROE'].isna().all() else 0
                 st.metric("ROE Promedio", f"{avg_roe:.1f}%")
             with col6:
-                avg_score = filtered_df['Master_Score'].mean() if 'Master_Score' in filtered_df.columns else 0
+                avg_score = filtered_df['Master_Score'].mean() if 'Master_Score' in filtered_df.columns and not filtered_df['Master_Score'].isna().all() else 0
                 st.metric("Score Promedio", f"{avg_score:.0f}/100")
             
-            # Tabs de resultados
+            # ===== RESULTS TABS =====
             result_tabs = st.tabs([
                 "📊 Tabla", "📈 Gráficos", "🏆 Rankings", 
                 "🎯 Análisis Sectorial", "🌍 Análisis por País", 
@@ -3713,8 +4434,8 @@ if st.session_state.filters_applied:
                     
                     with col1:
                         default_cols = ['Symbol', 'Company Name', 'Country', 'Sector', 
-                                      'Market Cap', 'Master_Score', 'PE Ratio', 'ROE', 
-                                      'Rev. Growth', 'Return 1Y', 'Div. Yield']
+                                    'Market Cap', 'Master_Score', 'PE Ratio', 'ROE', 
+                                    'Rev. Growth', 'Return 1Y', 'Div. Yield']
                         available_cols = [col for col in default_cols if col in filtered_df.columns]
                         
                         selected_columns = st.multiselect(
@@ -3799,7 +4520,7 @@ if st.session_state.filters_applied:
                     fig = go.Figure()
                     
                     scores = ['Quality_Score', 'Value_Score', 'Growth_Score', 
-                             'Financial_Health_Score', 'Momentum_Score']
+                            'Financial_Health_Score', 'Momentum_Score']
                     colors = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444']
                     
                     for score, color in zip(scores, colors):
@@ -3886,8 +4607,8 @@ if st.session_state.filters_applied:
                     }).round(2)
                     
                     sector_metrics.columns = ['Acciones', 'Cap. Total', 'Cap. Media', 'Cap. Mediana',
-                                             'P/E Med', 'ROE Med', 'Crec. Ingresos Med', 
-                                             'Margen Neto Med', 'D/E Med', 'Retorno 1A Med', 'Score Promedio']
+                                            'P/E Med', 'ROE Med', 'Crec. Ingresos Med', 
+                                            'Margen Neto Med', 'D/E Med', 'Retorno 1A Med', 'Score Promedio']
                     sector_metrics = sector_metrics.sort_values('Acciones', ascending=False)
                     
                     # Formatear valores
@@ -3994,7 +4715,7 @@ if st.session_state.filters_applied:
                     }).round(2)
                     
                     country_metrics.columns = ['Acciones', 'Cap. Total', 'Score Prom', 
-                                              'P/E Med', 'ROE Med', 'Ret. 1A Med']
+                                            'P/E Med', 'ROE Med', 'Ret. 1A Med']
                     country_metrics = country_metrics.sort_values('Acciones', ascending=False)
                     
                     # Top 20 países
@@ -4040,10 +4761,10 @@ if st.session_state.filters_applied:
                 
                 # Seleccionar métricas numéricas clave
                 numeric_cols = ['PE Ratio', 'PB Ratio', 'PS Ratio', 'ROE', 'ROA', 'ROIC',
-                              'Profit Margin', 'Rev. Growth', 'EPS Growth', 'Debt / Equity',
-                              'Current Ratio', 'Return 1Y', 'Div. Yield', 'Beta (5Y)',
-                              'Quality_Score', 'Value_Score', 'Growth_Score', 
-                              'Financial_Health_Score', 'Momentum_Score', 'Master_Score']
+                            'Profit Margin', 'Rev. Growth', 'EPS Growth', 'Debt / Equity',
+                            'Current Ratio', 'Return 1Y', 'Div. Yield', 'Beta (5Y)',
+                            'Quality_Score', 'Value_Score', 'Growth_Score', 
+                            'Financial_Health_Score', 'Momentum_Score', 'Master_Score']
                 
                 available_numeric = [col for col in numeric_cols if col in filtered_df.columns]
                 
@@ -4149,7 +4870,7 @@ if st.session_state.filters_applied:
                         # Agregar hoja de resumen
                         summary_data = {
                             'Métrica': ['Total Acciones', 'Países', 'Sectores', 'Cap. Mercado Total',
-                                       'P/E Mediano', 'ROE Promedio', 'Score Promedio'],
+                                    'P/E Mediano', 'ROE Promedio', 'Score Promedio'],
                             'Valor': [
                                 len(filtered_df),
                                 filtered_df['Country'].nunique() if 'Country' in filtered_df.columns else 0,
@@ -4182,11 +4903,8 @@ if st.session_state.filters_applied:
                         help="Formato para APIs y desarrollo web"
                     )
                 
-                # Reemplaza la sección del reporte en TAB 7: EXPORTAR (alrededor de línea 2798) con:
-
                 with col4:
                     # Crear un reporte resumido en texto
-                    # Usar concatenación de strings en lugar de f-string para evitar problemas con llaves
                     report = "BQUANT GLOBAL SCREENER - REPORTE DE RESULTADOS\n"
                     report += "================================================\n"
                     report += f"Fecha: {date.today().isoformat()}\n"
@@ -4252,21 +4970,103 @@ if st.session_state.filters_applied:
                         use_container_width=True,
                         help="Reporte ejecutivo en texto plano"
                     )
-        else:
-            st.warning("⚠️ No se encontraron acciones que cumplan todos los criterios. Intenta ajustar los filtros.")
+        
+        elif st.session_state.filters_applied and filtered_df.empty:
+            # No results found
+            st.warning("⚠️ No se encontraron acciones que cumplan todos los criterios.")
             
-            # Sugerencias de ajuste
+            # Provide helpful suggestions based on country selection
+            if 'countries_filter' in st.session_state and st.session_state.countries_filter:
+                selected_countries = st.session_state.countries_filter
+                
+                # Check if selected countries have poor data coverage
+                country_df = df[df['Country'].isin(selected_countries)]
+                sample_metrics = ['PE Ratio', 'ROE', 'Rev. Growth']
+                coverage_check = {}
+                
+                for metric in sample_metrics:
+                    if metric in country_df.columns:
+                        coverage_check[metric] = (country_df[metric].notna().sum() / len(country_df)) * 100
+                
+                avg_country_coverage = sum(coverage_check.values()) / len(coverage_check) if coverage_check else 0
+                
+                if avg_country_coverage < 30:
+                    st.error("""
+                    🔴 **Problema Detectado: Baja cobertura de datos**
+                    
+                    Los países seleccionados tienen muy pocos datos disponibles.
+                    
+                    **Soluciones recomendadas:**
+                    1. Reduce significativamente el número de filtros
+                    2. Usa solo filtros básicos: Market Cap, Retornos
+                    3. Considera cambiar a países con mejor cobertura (USA, UK, Alemania)
+                    4. Prueba el screener "Emergentes Básico" diseñado para datos limitados
+                    """)
+                else:
+                    st.info("""
+                    💡 **Sugerencias para obtener resultados:**
+                    
+                    • Reduce el número de filtros aplicados
+                    • Amplía los rangos de valores (ej: P/E 0-50 en vez de 10-15)
+                    • Verifica que no tengas filtros contradictorios
+                    • Prueba con un screener predefinido
+                    """)
+            else:
+                st.info("""
+                💡 **Sugerencias para obtener resultados:**
+                
+                • Reduce el número de filtros aplicados
+                • Amplía los rangos de valores
+                • Verifica que los países seleccionados tengan datos
+                • Prueba con un screener predefinido
+                """)
+        
+        else:
+            # Initial state - no filters applied
             st.markdown("""
-            <div class="info-box">
-                <h4>💡 Sugerencias para obtener resultados:</h4>
-                <ul>
-                    <li>Reduce el número de filtros aplicados simultáneamente</li>
-                    <li>Amplía los rangos de valores aceptables</li>
-                    <li>Verifica que los países seleccionados tengan datos disponibles</li>
-                    <li>Prueba con uno de los screeners predefinidos</li>
-                </ul>
+            <div style='text-align: center; padding: 50px; background: linear-gradient(135deg, rgba(74, 158, 255, 0.1), rgba(147, 51, 234, 0.1)); 
+                        border-radius: 20px; border: 2px dashed rgba(74, 158, 255, 0.3);'>
+                <h2 style='color: #4a9eff; margin-bottom: 20px;'>👈 Configura los filtros para comenzar</h2>
+                <p style='color: #c9d1d9; font-size: 1.1em;'>
+                    Selecciona un screener predefinido o crea tu propia estrategia con filtros personalizados.
+                    <br><br>
+                    Haz clic en <strong>'EJECUTAR'</strong> o <strong>'APLICAR TODOS LOS FILTROS'</strong> para ver los resultados.
+                </p>
             </div>
             """, unsafe_allow_html=True)
+            
+            # Show database statistics
+            st.markdown("### 📊 Resumen de la Base de Datos")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Acciones", f"{len(df):,}")
+            with col2:
+                if 'Country' in df.columns:
+                    st.metric("Países", f"{df['Country'].nunique()}")
+            with col3:
+                median_pe = df['PE Ratio'].median() if 'PE Ratio' in df.columns else 0
+                st.metric("P/E Mediano Global", f"{median_pe:.1f}")
+            with col4:
+                total_mcap = df['Market Cap'].sum() if 'Market Cap' in df.columns else 0
+                st.metric("Cap. Total", format_number(total_mcap, prefix="$"))
+            
+            # Top countries chart
+            if 'Country' in df.columns:
+                st.markdown("### 🌍 Top 10 Países por Número de Acciones")
+                top_countries = df['Country'].value_counts().head(10)
+                
+                fig = px.bar(
+                    x=top_countries.values,
+                    y=top_countries.index,
+                    orientation='h',
+                    title="Distribución Global de Acciones",
+                    template='plotly_dark',
+                    color=top_countries.values,
+                    color_continuous_scale='Viridis'
+                )
+                fig.update_layout(height=400)
+                st.plotly_chart(fig, use_container_width=True)
 
 else:
     # Estado inicial cuando no se han aplicado filtros
