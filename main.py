@@ -201,7 +201,7 @@ st.markdown(professional_css, unsafe_allow_html=True)
 # FUNCIONES PRINCIPALES
 # =============================================================================
 
-@st.cache_data(persist="disk", show_spinner=False, ttl=3600)
+@st.cache_data(persist="disk", show_spinner=False)
 def load_and_preprocess_data():
     try:
         df = pd.read_csv('all_countries_stocks_20250919_122611.csv', low_memory=False)
