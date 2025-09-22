@@ -4426,57 +4426,143 @@ if st.session_state.filters_applied:
                 "📐 Correlaciones", "💾 Exportar"
             ])
             
+            st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
             # TAB 1: TABLA
             with result_tabs[0]:
                 st.markdown("### 📊 Resultados del Screening")
                 
-                # Configuración de vista
+                # Initialize column selection in session state if not exists
+                if 'selected_columns_display' not in st.session_state:
+                    default_cols = ['Symbol', 'Company Name', 'Country', 'Sector', 
+                                  'Market Cap', 'Master_Score', 'PE Ratio', 'ROE', 
+                                  'Rev. Growth', 'Return 1Y', 'Ent. Value']
+                    available_cols = [col for col in default_cols if col in filtered_df.columns]
+                    st.session_state.selected_columns_display = available_cols[:10]
+                
+                if 'sort_column' not in st.session_state:
+                    st.session_state.sort_column = 'Master_Score' if 'Master_Score' in filtered_df.columns else 'Symbol'
+                
+                if 'sort_order' not in st.session_state:
+                    st.session_state.sort_order = 'Descendente'
+                
+                if 'n_rows_display' not in st.session_state:
+                    st.session_state.n_rows_display = 100
+                
+                # Use a form to batch configuration changes
                 with st.expander("⚙️ Configurar Vista", expanded=False):
-                    col1, col2, col3 = st.columns(3)
-                    
-                    with col1:
-                        default_cols = ['Symbol', 'Company Name', 'Country', 'Sector', 
-                                    'Market Cap', 'Master_Score', 'PE Ratio', 'ROE', 
-                                    'Rev. Growth', 'Return 1Y', 'Div. Yield']
-                        available_cols = [col for col in default_cols if col in filtered_df.columns]
+                    with st.form("table_config"):
+                        col1, col2, col3 = st.columns(3)
                         
-                        selected_columns = st.multiselect(
-                            "Seleccionar columnas:",
-                            options=list(filtered_df.columns),
-                            default=available_cols[:10],
-                            help="Elige las columnas a mostrar en la tabla"
-                        )
-                    
-                    with col2:
-                        if selected_columns:
+                        with col1:
+                            selected_columns = st.multiselect(
+                                "Seleccionar columnas:",
+                                options=list(filtered_df.columns),
+                                default=st.session_state.selected_columns_display,
+                                key="temp_selected_columns"
+                            )
+                        
+                        with col2:
                             sort_column = st.selectbox(
                                 "Ordenar por:",
-                                options=selected_columns,
-                                index=selected_columns.index('Master_Score') if 'Master_Score' in selected_columns else 0
+                                options=selected_columns if selected_columns else ['Symbol'],
+                                index=0 if not selected_columns else (
+                                    selected_columns.index(st.session_state.sort_column) 
+                                    if st.session_state.sort_column in selected_columns 
+                                    else 0
+                                ),
+                                key="temp_sort_column"
                             )
-                            sort_order = st.radio("Orden:", ["Descendente", "Ascendente"], horizontal=True)
-                        else:
-                            sort_column = 'Symbol'
-                            sort_order = "Descendente"
-                    
-                    with col3:
-                        n_rows = st.select_slider(
-                            "Filas a mostrar:",
-                            options=[25, 50, 100, 200, 500, 1000],
-                            value=100
+                            sort_order = st.radio(
+                                "Orden:", 
+                                ["Descendente", "Ascendente"], 
+                                horizontal=True,
+                                index=0 if st.session_state.sort_order == "Descendente" else 1,
+                                key="temp_sort_order"
+                            )
+                        
+                        with col3:
+                            n_rows = st.select_slider(
+                                "Filas a mostrar:",
+                                options=[25, 50, 100, 200, 500, 1000],
+                                value=st.session_state.n_rows_display,
+                                key="temp_n_rows"
+                            )
+                        
+                        # Apply button for the form
+                        submitted = st.form_submit_button(
+                            "✅ Aplicar Configuración",
+                            use_container_width=True,
+                            type="primary"
                         )
+                        
+                        if submitted:
+                            # Update state and scroll back to results
+                            st.session_state.selected_columns_display = selected_columns
+                            st.rerun()
+                            # Use JavaScript to scroll back
+                            st.markdown("""
+                            <script>
+                                document.getElementById('results-anchor').scrollIntoView();
+                            </script>
+                            """, unsafe_allow_html=True)
                 
-                # Crear tabla HTML hermosa
-                if selected_columns:
-                    df_display = filtered_df[selected_columns].copy()
+                # Display table with current configuration
+                if st.session_state.selected_columns_display:
+                    df_display = filtered_df[st.session_state.selected_columns_display].copy()
                     df_display = df_display.sort_values(
-                        by=sort_column, 
-                        ascending=(sort_order == "Ascendente")
-                    ).head(n_rows)
+                        by=st.session_state.sort_column, 
+                        ascending=(st.session_state.sort_order == "Ascendente")
+                    ).head(st.session_state.n_rows_display)
                     
-                    # Crear tabla HTML con estilos
-                    html_table = create_beautiful_html_table(df_display)
-                    st.markdown(html_table, unsafe_allow_html=True)
+                    # Option 1: Use st.dataframe (interactive but simpler)
+                    st.dataframe(
+                        df_display,
+                        use_container_width=True,
+                        height=600,
+                        column_config={
+                            "Symbol": st.column_config.TextColumn(
+                                "Symbol",
+                                help="Stock ticker symbol",
+                                width="small",
+                            ),
+                            "Company Name": st.column_config.TextColumn(
+                                "Company Name",
+                                width="large",
+                            ),
+                            "Market Cap": st.column_config.NumberColumn(
+                                "Market Cap",
+                                format="$%.0f",
+                                width="medium",
+                            ),
+                            "Master_Score": st.column_config.ProgressColumn(
+                                "Master Score",
+                                min_value=0,
+                                max_value=100,
+                                format="%.0f",
+                                width="small",
+                            ),
+                            "PE Ratio": st.column_config.NumberColumn(
+                                "P/E Ratio",
+                                format="%.2f",
+                                width="small",
+                            ),
+                            "ROE": st.column_config.NumberColumn(
+                                "ROE",
+                                format="%.1f%%",
+                                width="small",
+                            ),
+                            "Rev. Growth": st.column_config.NumberColumn(
+                                "Rev Growth",
+                                format="%.1f%%",
+                                width="small",
+                            ),
+                            "Return 1Y": st.column_config.NumberColumn(
+                                "Return 1Y",
+                                format="%.1f%%",
+                                width="small",
+                            ),
+                        }
+                    )
             
             # TAB 2: GRÁFICOS
             with result_tabs[1]:
