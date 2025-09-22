@@ -4819,7 +4819,7 @@ if st.session_state.filters_applied:
                 else:
                     st.info("No hay suficientes métricas numéricas para análisis de correlación")
             
-            # TAB 7: EXPORTAR
+            # TAB 7: EXPORTAR - SIMPLIFIED VERSION
             with result_tabs[6]:
                 st.markdown("### 💾 Opciones de Exportación")
                 
@@ -4843,119 +4843,75 @@ if st.session_state.filters_applied:
                         help="Si no seleccionas ninguna, se exportarán todas las columnas"
                     )
                 
-                # Preparar dataframe para exportar
-                if export_columns:
-                    export_df = filtered_df[export_columns]
-                else:
-                    export_df = filtered_df
+                # Preparar dataframe
+                export_df = filtered_df[export_columns] if export_columns else filtered_df
                 
-                # Botones de exportación - REGENERATE FILES EACH TIME
+                # Generate timestamp once
+                timestamp = date.today().isoformat()
+                
                 col1, col2, col3, col4 = st.columns(4)
                 
+                # CSV Download - Direct generation without caching
                 with col1:
-                    # CSV - Generate fresh each time
-                    @st.cache_data
-                    def convert_df_to_csv(df):
-                        return df.to_csv(index=False).encode('utf-8')
-                    
-                    csv_data = convert_df_to_csv(export_df)
+                    csv = export_df.to_csv(index=False)
                     st.download_button(
                         label="📄 Descargar CSV",
-                        data=csv_data,
-                        file_name=f"bquant_screener_{date.today().isoformat()}.csv",
+                        data=csv,
+                        file_name=f"bquant_{timestamp}.csv",
                         mime="text/csv",
-                        use_container_width=True,
-                        help="Formato compatible con Excel y análisis de datos"
+                        use_container_width=True
                     )
                 
+                # Excel Download - Using BytesIO properly
                 with col2:
-                    # Excel - Generate fresh each time
-                    @st.cache_data
-                    def convert_df_to_excel(df, summary_df):
-                        output = io.BytesIO()
-                        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                            df.to_excel(writer, sheet_name='Resultados', index=False)
-                            summary_df.to_excel(writer, sheet_name='Resumen', index=False)
-                        return output.getvalue()
+                    buffer = io.BytesIO()
+                    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                        export_df.to_excel(writer, sheet_name='Resultados', index=False)
+                        # Add summary sheet
+                        pd.DataFrame({
+                            'Métrica': ['Total', 'Países', 'Sectores'],
+                            'Valor': [
+                                len(export_df),
+                                export_df['Country'].nunique() if 'Country' in export_df.columns else 0,
+                                export_df['Sector'].nunique() if 'Sector' in export_df.columns else 0
+                            ]
+                        }).to_excel(writer, sheet_name='Resumen', index=False)
                     
-                    # Create summary data
-                    summary_data = pd.DataFrame({
-                        'Métrica': ['Total Acciones', 'Países', 'Sectores', 'Cap. Mercado Total',
-                                   'P/E Mediano', 'ROE Promedio', 'Score Promedio'],
-                        'Valor': [
-                            len(filtered_df),
-                            filtered_df['Country'].nunique() if 'Country' in filtered_df.columns else 0,
-                            filtered_df['Sector'].nunique() if 'Sector' in filtered_df.columns else 0,
-                            format_number(filtered_df['Market Cap'].sum() if 'Market Cap' in filtered_df.columns else 0, prefix='$'),
-                            f"{filtered_df['PE Ratio'].median():.1f}" if 'PE Ratio' in filtered_df.columns and not filtered_df['PE Ratio'].isna().all() else 'N/D',
-                            f"{filtered_df['ROE'].mean():.1f}%" if 'ROE' in filtered_df.columns and not filtered_df['ROE'].isna().all() else 'N/D',
-                            f"{filtered_df['Master_Score'].mean():.0f}" if 'Master_Score' in filtered_df.columns and not filtered_df['Master_Score'].isna().all() else 'N/D'
-                        ]
-                    })
-                    
-                    excel_data = convert_df_to_excel(export_df, summary_data)
                     st.download_button(
                         label="📊 Descargar Excel",
-                        data=excel_data,
-                        file_name=f"bquant_screener_{date.today().isoformat()}.xlsx",
+                        data=buffer.getvalue(),
+                        file_name=f"bquant_{timestamp}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True,
-                        help="Excel con múltiples hojas y formato"
+                        use_container_width=True
                     )
                 
+                # JSON Download
                 with col3:
-                    # JSON - Generate fresh each time
-                    @st.cache_data
-                    def convert_df_to_json(df):
-                        return df.to_json(orient='records', indent=2)
-                    
-                    json_data = convert_df_to_json(export_df)
+                    json_str = export_df.to_json(orient='records', indent=2)
                     st.download_button(
                         label="📋 Descargar JSON",
-                        data=json_data,
-                        file_name=f"bquant_screener_{date.today().isoformat()}.json",
+                        data=json_str,
+                        file_name=f"bquant_{timestamp}.json",
                         mime="application/json",
-                        use_container_width=True,
-                        help="Formato para APIs y desarrollo web"
+                        use_container_width=True
                     )
                 
+                # Text Report
                 with col4:
-                    # Text Report - Generate fresh each time
-                    @st.cache_data
-                    def generate_report(df, screener_name):
-                        report = "BQUANT GLOBAL SCREENER - REPORTE DE RESULTADOS\n"
-                        report += "=" * 50 + "\n"
-                        report += f"Fecha: {date.today().isoformat()}\n"
-                        report += f"Screener: {screener_name}\n\n"
-                        report += "RESUMEN EJECUTIVO\n"
-                        report += "-" * 20 + "\n"
-                        report += f"Total acciones: {len(df):,}\n"
-                        
-                        if 'Country' in df.columns:
-                            report += f"Países: {df['Country'].nunique()}\n"
-                        if 'Sector' in df.columns:
-                            report += f"Sectores: {df['Sector'].nunique()}\n"
-                        if 'Market Cap' in df.columns:
-                            report += f"Cap. Total: {format_number(df['Market Cap'].sum(), prefix='$')}\n"
-                        
-                        report += "\nTOP 10 ACCIONES\n"
-                        report += "-" * 20 + "\n"
-                        
-                        if 'Master_Score' in df.columns and not df['Master_Score'].isna().all():
-                            top10 = df.nlargest(10, 'Master_Score')[['Symbol', 'Company Name', 'Master_Score']]
-                            for _, row in top10.iterrows():
-                                report += f"{row['Symbol']}: {str(row['Company Name'])[:40]} - Score: {row['Master_Score']:.0f}\n"
-                        
-                        return report
-                    
-                    report_data = generate_report(export_df, st.session_state.get('selected_screener', 'Custom'))
+                    report = f"""BQUANT SCREENER REPORT
+            {'='*30}
+            Date: {timestamp}
+            Screener: {st.session_state.get('selected_screener', 'Custom')}
+            Total Stocks: {len(export_df):,}
+            Countries: {export_df['Country'].nunique() if 'Country' in export_df.columns else 0}
+            Sectors: {export_df['Sector'].nunique() if 'Sector' in export_df.columns else 0}
+            """
                     st.download_button(
                         label="📝 Descargar Reporte",
-                        data=report_data,
-                        file_name=f"bquant_reporte_{date.today().isoformat()}.txt",
+                        data=report,
+                        file_name=f"bquant_{timestamp}.txt",
                         mime="text/plain",
-                        use_container_width=True,
-                        help="Reporte ejecutivo en texto plano"
+                        use_container_width=True
                     )
         
         elif st.session_state.filters_applied and filtered_df.empty:
