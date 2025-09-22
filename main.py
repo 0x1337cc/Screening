@@ -2100,13 +2100,13 @@ with col1:
                 st.session_state.manual_filters_modified = False
     
     selected_screener = st.selectbox(
-        "",
+        "Seleccionar Screener",  
         options=list(SCREENERS.keys()),
         index=list(SCREENERS.keys()).index(st.session_state.selected_screener),
         key="screener_selector",
         on_change=on_screener_change,
-        label_visibility="collapsed"
-    )
+        label_visibility="collapsed" 
+)
 
 with col2:
     screener_config = SCREENERS.get(selected_screener, {"description": "", "filters": {}})
