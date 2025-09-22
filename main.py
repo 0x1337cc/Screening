@@ -211,7 +211,9 @@ def load_and_preprocess_data():
             df['Country'] = df['Country'].fillna('Unknown')
             if 'Country_Original' in df.columns:
                 df.loc[df['Country'] == 'Unknown', 'Country'] = df.loc[df['Country'] == 'Unknown', 'Country_Original']
-        
+        if 'Market Cap' in df.columns:
+            df['Market Cap'] = df['Market Cap'].fillna(0)
+            
         # List of columns that should be numeric
         numeric_columns = [
             'PE Ratio', 'Forward PE', 'PB Ratio', 'PS Ratio', 'Forward PS', 'PEG Ratio',
