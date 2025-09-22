@@ -196,6 +196,543 @@ professional_css = """
 """
 st.markdown(professional_css, unsafe_allow_html=True)
 
+
+# Función mejorada para la página de bienvenida
+def show_welcome_page():
+    """
+    Muestra una página de bienvenida mejorada con:
+    - Pie chart de distribución global
+    - Explicación paso a paso clara
+    - Explorador de cobertura de datos interactivo
+    - Ejemplos de uso concretos
+    """
+    
+    # Header principal con gradiente
+    st.markdown("""
+    <div style='text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                border-radius: 20px; margin-bottom: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);'>
+        <h1 style='margin: 0; color: #ffffff; font-size: 2.8em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); margin-bottom: 15px;'>
+            🌍 Bienvenido al BQuant Global Stock Screener
+        </h1>
+        <p style='color: #f0f0f0; margin-top: 15px; font-size: 1.3em; font-weight: 300; line-height: 1.5;'>
+            Tu herramienta profesional para analizar <strong style='color: #ffd700;'>68,000+ acciones</strong> 
+            en <strong style='color: #ffd700;'>89 países</strong> con <strong style='color: #ffd700;'>270+ métricas</strong>
+        </p>
+        <p style='color: #e0e0e0; margin-top: 10px; font-size: 1.1em;'>
+            Encuentra las mejores oportunidades de inversión global con análisis institucional
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Cargar datos para estadísticas
+    with st.spinner("🔄 Cargando base de datos global..."):
+        df_welcome = load_and_preprocess_data()
+    
+    # ============= SECCIÓN 1: ¿QUÉ PUEDES HACER? =============
+    st.markdown("## 🎯 ¿Qué Puedes Hacer con Este Screener?")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown("""
+        <div class="metric-card" style="text-align: center; padding: 20px;">
+            <div style="font-size: 2.5em; margin-bottom: 10px;">🔍</div>
+            <h4 style="color: #4a9eff; margin-bottom: 10px;">Buscar Valor</h4>
+            <p style="font-size: 0.9em; color: #c9d1d9;">
+                Encuentra acciones infravaloradas con P/E bajo, P/B < 1, 
+                alto FCF Yield
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="metric-card" style="text-align: center; padding: 20px;">
+            <div style="font-size: 2.5em; margin-bottom: 10px;">🚀</div>
+            <h4 style="color: #4a9eff; margin-bottom: 10px;">Identificar Crecimiento</h4>
+            <p style="font-size: 0.9em; color: #c9d1d9;">
+                Descubre empresas con crecimiento explosivo de ingresos 
+                y beneficios
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div class="metric-card" style="text-align: center; padding: 20px;">
+            <div style="font-size: 2.5em; margin-bottom: 10px;">💎</div>
+            <h4 style="color: #4a9eff; margin-bottom: 10px;">Analizar Calidad</h4>
+            <p style="font-size: 0.9em; color: #c9d1d9;">
+                Evalúa empresas con ROE alto, márgenes sólidos 
+                y balance fuerte
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown("""
+        <div class="metric-card" style="text-align: center; padding: 20px;">
+            <div style="font-size: 2.5em; margin-bottom: 10px;">🌐</div>
+            <h4 style="color: #4a9eff; margin-bottom: 10px;">Explorar Mercados</h4>
+            <p style="font-size: 0.9em; color: #c9d1d9;">
+                Compara oportunidades en 89 países y mercados 
+                emergentes
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # ============= SECCIÓN 2: DISTRIBUCIÓN GLOBAL (PIE CHART) =============
+    st.markdown("## 🌐 Distribución Global de Acciones")
+    
+    # Preparar datos para el pie chart
+    country_counts = df_welcome['Country'].value_counts()
+    
+    # Agrupar países por regiones para mejor visualización
+    regions = {
+        'Estados Unidos': ['United States', 'US OTC'],
+        'Europa': ['Germany', 'United Kingdom', 'France', 'Netherlands', 'Spain', 'Italy', 
+                   'Belgium', 'Switzerland', 'Sweden', 'Norway', 'Denmark', 'Finland', 
+                   'Ireland', 'Austria', 'Poland', 'Greece', 'Portugal'],
+        'Asia Desarrollada': ['Japan', 'Hong Kong', 'Singapore', 'South Korea', 'Taiwan'],
+        'China': ['China'],
+        'Asia Emergente': ['India', 'Indonesia', 'Thailand', 'Malaysia', 'Philippines', 
+                          'Vietnam', 'Pakistan', 'Bangladesh'],
+        'América Latina': ['Brazil', 'Mexico', 'Argentina', 'Chile', 'Colombia', 'Peru'],
+        'Medio Oriente y África': ['Saudi Arabia', 'United Arab Emirates', 'Israel', 
+                                   'Turkey', 'Egypt', 'South Africa', 'Nigeria', 'Morocco'],
+        'Oceanía': ['Australia', 'New Zealand'],
+        'Otros': []  # Para países no clasificados
+    }
+    
+    # Calcular totales por región
+    region_totals = {}
+    countries_used = set()
+    
+    for region, countries in regions.items():
+        total = 0
+        for country in countries:
+            if country in country_counts.index:
+                total += country_counts[country]
+                countries_used.add(country)
+        if total > 0:
+            region_totals[region] = total
+    
+    # Agregar países no clasificados a "Otros"
+    otros_total = 0
+    for country, count in country_counts.items():
+        if country not in countries_used:
+            otros_total += count
+    if otros_total > 0:
+        region_totals['Otros'] = otros_total
+    
+    # Crear dos columnas para el pie chart y la tabla
+    col1, col2 = st.columns([1.5, 1])
+    
+    with col1:
+        # Crear pie chart interactivo
+        fig = go.Figure(data=[go.Pie(
+            labels=list(region_totals.keys()),
+            values=list(region_totals.values()),
+            hole=0.3,  # Donut chart
+            marker=dict(
+                colors=['#4a9eff', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', 
+                       '#ec4899', '#14b8a6', '#fbbf24', '#6b7280'],
+                line=dict(color='#1a1f2e', width=2)
+            ),
+            textposition='inside',
+            texttemplate='%{label}<br>%{value:,}<br>(%{percent})',
+            hovertemplate='<b>%{label}</b><br>' +
+                         'Acciones: %{value:,}<br>' +
+                         'Porcentaje: %{percent}<br>' +
+                         '<extra></extra>'
+        )])
+        
+        fig.update_layout(
+            title=dict(
+                text='Distribución de Acciones por Región',
+                font=dict(size=20, color='#f0f6fc')
+            ),
+            template='plotly_dark',
+            height=450,
+            showlegend=True,
+            legend=dict(
+                orientation="v",
+                yanchor="middle",
+                y=0.5,
+                xanchor="left",
+                x=1.05
+            ),
+            margin=dict(l=20, r=150, t=60, b=20)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        st.markdown("### 📊 Resumen por Región")
+        
+        # Crear tabla resumen
+        summary_data = []
+        for region, total in sorted(region_totals.items(), key=lambda x: x[1], reverse=True):
+            percentage = (total / len(df_welcome)) * 100
+            summary_data.append({
+                'Región': region,
+                'Acciones': f'{total:,}',
+                'Porcentaje': f'{percentage:.1f}%'
+            })
+        
+        summary_df = pd.DataFrame(summary_data)
+        
+        # Mostrar como tabla HTML estilizada
+        html_table = f"""
+        <div style="background: rgba(28, 31, 38, 0.8); border-radius: 10px; padding: 15px;">
+            <table style="width: 100%; color: #c9d1d9;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #4a9eff;">
+                        <th style="text-align: left; padding: 8px;">Región</th>
+                        <th style="text-align: right; padding: 8px;">Acciones</th>
+                        <th style="text-align: right; padding: 8px;">%</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        
+        for _, row in summary_df.iterrows():
+            html_table += f"""
+                    <tr style="border-bottom: 1px solid rgba(74, 158, 255, 0.2);">
+                        <td style="padding: 8px; font-weight: 600;">{row['Región']}</td>
+                        <td style="text-align: right; padding: 8px;">{row['Acciones']}</td>
+                        <td style="text-align: right; padding: 8px; color: #4a9eff;">{row['Porcentaje']}</td>
+                    </tr>
+            """
+        
+        html_table += """
+                </tbody>
+            </table>
+        </div>
+        """
+        
+        st.markdown(html_table, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # ============= SECCIÓN 3: CÓMO FUNCIONA =============
+    st.markdown("## 🚀 Cómo Funciona: 3 Pasos Simples")
+    
+    # Crear tabs para cada paso
+    tab1, tab2, tab3 = st.tabs(["1️⃣ Selecciona Estrategia", "2️⃣ Aplica Filtros", "3️⃣ Analiza Resultados"])
+    
+    with tab1:
+        col1, col2 = st.columns([1, 1.5])
+        with col1:
+            st.markdown("""
+            ### Paso 1: Elige tu Estrategia
+            
+            **Opciones disponibles:**
+            - 🎯 **Constructor Personalizado**: Crea tu propia estrategia
+            - 💎 **Valor Profundo**: P/E < 10, P/B < 1
+            - 🚀 **Hipercrecimiento**: Crecimiento > 30%
+            - 💰 **Aristócratas del Dividendo**: 25+ años de aumentos
+            - 🏆 **Calidad Premium**: ROE > 20%, ROIC > 15%
+            - Y 15+ estrategias más...
+            
+            **Tip:** Comienza con una plantilla y ajústala a tus necesidades
+            """)
+        
+        with col2:
+            # Ejemplo visual de selector
+            st.image("https://via.placeholder.com/600x400/4a9eff/ffffff?text=Selector+de+Estrategias", 
+                    caption="Vista del selector de estrategias predefinidas", 
+                    use_container_width=True)
+            st.info("💡 Cada estrategia incluye filtros pre-configurados basados en metodologías probadas de inversión")
+    
+    with tab2:
+        col1, col2 = st.columns([1.5, 1])
+        with col1:
+            st.markdown("""
+            ### Paso 2: Personaliza tus Filtros
+            
+            **Categorías de filtros disponibles:**
+            
+            📊 **Valoración**: P/E, P/B, P/S, EV/EBITDA, PEG  
+            📈 **Crecimiento**: Ingresos, BPA, estimaciones futuras  
+            💎 **Rentabilidad**: ROE, ROA, ROIC, márgenes  
+            🏥 **Salud Financiera**: Liquidez, deuda, Z-Score  
+            💵 **Dividendos**: Yield, payout, historial  
+            📉 **Técnico**: RSI, retornos, momentum  
+            🌍 **Geografía**: 89 países, regiones, mercados  
+            
+            **Ejemplo de filtro combinado:**
+            - P/E < 15 AND ROE > 15% AND Deuda/Equity < 1
+            """)
+        
+        with col2:
+            st.metric("Total de Filtros", "270+", "Métricas profesionales")
+            st.metric("Países", "89", "Mercados globales")
+            st.metric("Combinaciones", "∞", "Posibilidades infinitas")
+            
+            st.success("✅ Los filtros se aplican en tiempo real sobre toda la base de datos")
+    
+    with tab3:
+        st.markdown("""
+        ### Paso 3: Explora y Exporta Resultados
+        
+        Una vez aplicados los filtros, obtendrás:
+        """)
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            **📊 Tabla Interactiva**
+            - Ordena por cualquier columna
+            - Selecciona métricas a mostrar
+            - Vista personalizable
+            """)
+        
+        with col2:
+            st.markdown("""
+            **📈 Visualizaciones**
+            - Gráficos de dispersión
+            - Análisis por sector/país
+            - Correlaciones y heatmaps
+            """)
+        
+        with col3:
+            st.markdown("""
+            **💾 Exportación**
+            - CSV para Excel
+            - JSON para APIs
+            - Reportes ejecutivos
+            """)
+    
+    st.markdown("---")
+    
+    # ============= SECCIÓN 4: EXPLORADOR DE COBERTURA =============
+    st.markdown("## 🔍 Explorador de Cobertura de Datos por País")
+    
+    st.info("""
+    ⚠️ **Importante**: La profundidad de datos varía significativamente entre países. 
+    USA y mercados desarrollados tienen cobertura completa, mientras que mercados emergentes pueden tener datos limitados.
+    Usa este explorador para entender qué filtros funcionarán mejor en cada mercado.
+    """)
+    
+    # Selector de país con preview
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        # Top 20 países por número de acciones
+        top_countries = country_counts.head(20)
+        selected_country = st.selectbox(
+            "🌍 Selecciona un país para analizar:",
+            options=top_countries.index.tolist(),
+            format_func=lambda x: f"{x} ({country_counts[x]:,} acciones)"
+        )
+        
+        if selected_country:
+            country_df = df_welcome[df_welcome['Country'] == selected_country]
+            
+            # Métricas del país seleccionado
+            st.metric("Total Acciones", f"{len(country_df):,}")
+            st.metric("Sectores", f"{country_df['Sector'].nunique() if 'Sector' in country_df.columns else 0}")
+            
+            # Cap. de mercado total
+            total_mcap = country_df['Market Cap'].sum() if 'Market Cap' in country_df.columns else 0
+            st.metric("Cap. Total", format_number(total_mcap, prefix="$"))
+    
+    with col2:
+        if selected_country:
+            # Análisis de cobertura de datos
+            st.markdown(f"### 📊 Cobertura de Datos: **{selected_country}**")
+            
+            # Categorías de métricas a evaluar
+            metric_categories = {
+                "Valoración Fundamental": ['PE Ratio', 'PB Ratio', 'PS Ratio', 'PEG Ratio', 'EV/EBITDA'],
+                "Rentabilidad": ['ROE', 'ROA', 'ROIC', 'Profit Margin', 'Gross Margin'],
+                "Crecimiento": ['Rev. Growth', 'EPS Growth', 'Rev Gr. Next Y', 'EPS Gr. Next Y'],
+                "Salud Financiera": ['Current Ratio', 'Debt / Equity', 'Z-Score', 'FCF'],
+                "Dividendos": ['Div. Yield', 'Payout Ratio', 'Years', 'Div. Growth'],
+                "Técnico": ['RSI', 'Beta (5Y)', 'Return 1Y', 'Rel. Volume'],
+                "Estimaciones": ['Forward PE', 'Analysts', 'PT Upside', 'Rating']
+            }
+            
+            # Calcular cobertura para cada categoría
+            coverage_results = []
+            for category, metrics in metric_categories.items():
+                available_metrics = [m for m in metrics if m in country_df.columns]
+                if available_metrics:
+                    # Calcular porcentaje de empresas con datos en esta categoría
+                    has_data = country_df[available_metrics].notna().any(axis=1)
+                    coverage_pct = (has_data.sum() / len(country_df) * 100) if len(country_df) > 0 else 0
+                else:
+                    coverage_pct = 0
+                
+                coverage_results.append({
+                    'Categoría': category,
+                    'Cobertura': coverage_pct,
+                    'Calidad': '🟢 Excelente' if coverage_pct >= 80 else 
+                              '🟡 Buena' if coverage_pct >= 50 else 
+                              '🟠 Limitada' if coverage_pct >= 20 else 
+                              '🔴 Muy Limitada'
+                })
+            
+            # Crear DataFrame de resultados
+            coverage_df = pd.DataFrame(coverage_results)
+            
+            # Mostrar como barras de progreso
+            for _, row in coverage_df.iterrows():
+                col_a, col_b = st.columns([1, 3])
+                with col_a:
+                    st.markdown(f"**{row['Categoría']}**")
+                with col_b:
+                    # Crear barra de progreso visual
+                    progress_color = '#10b981' if row['Cobertura'] >= 80 else '#f59e0b' if row['Cobertura'] >= 50 else '#ef4444'
+                    st.markdown(f"""
+                    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 25px; position: relative;">
+                        <div style="background: {progress_color}; width: {row['Cobertura']:.0f}%; height: 100%; 
+                                   border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <span style="color: white; font-weight: bold; font-size: 12px;">
+                                {row['Cobertura']:.0f}% {row['Calidad']}
+                            </span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            # Recomendación basada en cobertura
+            avg_coverage = coverage_df['Cobertura'].mean()
+            
+            if avg_coverage >= 70:
+                st.success(f"""
+                ✅ **{selected_country}** tiene EXCELENTE cobertura de datos. 
+                Puedes usar cualquier combinación de filtros con confianza.
+                """)
+            elif avg_coverage >= 40:
+                st.warning(f"""
+                ⚠️ **{selected_country}** tiene cobertura MODERADA. 
+                Enfócate en métricas básicas (P/E, P/B, ROE, Crecimiento).
+                """)
+            else:
+                st.error(f"""
+                🔴 **{selected_country}** tiene cobertura LIMITADA. 
+                Usa principalmente filtros de precio y capitalización.
+                """)
+    
+    st.markdown("---")
+    
+    # ============= SECCIÓN 5: CASOS DE USO =============
+    st.markdown("## 💡 Casos de Uso y Ejemplos")
+    
+    example_tabs = st.tabs(["Para Inversores Valor", "Para Growth", "Para Dividendos", "Para Trading"])
+    
+    with example_tabs[0]:
+        st.markdown("""
+        ### 🎯 Inversor de Valor Buscando Gangas
+        
+        **Objetivo:** Encontrar empresas sólidas cotizando por debajo de su valor intrínseco
+        
+        **Filtros sugeridos:**
+        - P/E < 15
+        - P/B < 1.5
+        - FCF Yield > 5%
+        - Debt/Equity < 1
+        - ROE > 10%
+        - Current Ratio > 1.5
+        
+        **Resultado esperado:** 200-500 empresas globales infravaloradas con fundamentos sólidos
+        """)
+    
+    with example_tabs[1]:
+        st.markdown("""
+        ### 🚀 Inversor Growth Buscando el Próximo 10-Bagger
+        
+        **Objetivo:** Identificar empresas con crecimiento explosivo y potencial disruptivo
+        
+        **Filtros sugeridos:**
+        - Crecimiento Ingresos > 30%
+        - Crecimiento BPA > 25%
+        - Margen Bruto > 60%
+        - Insider Ownership > 10%
+        - Momentum (Return 3M) > 15%
+        
+        **Resultado esperado:** 100-300 empresas de hipercrecimiento con momentum positivo
+        """)
+    
+    with example_tabs[2]:
+        st.markdown("""
+        ### 💰 Inversor de Dividendos Buscando Ingresos Pasivos
+        
+        **Objetivo:** Construir cartera de dividendos crecientes y sostenibles
+        
+        **Filtros sugeridos:**
+        - Dividend Yield: 3% - 7%
+        - Años consecutivos aumentando: > 10
+        - Payout Ratio < 70%
+        - Z-Score > 3
+        - Free Cash Flow > 0
+        
+        **Resultado esperado:** 150-400 empresas con dividendos seguros y crecientes
+        """)
+    
+    with example_tabs[3]:
+        st.markdown("""
+        ### 📈 Trader Buscando Oportunidades de Momentum
+        
+        **Objetivo:** Encontrar acciones con fuerte momentum y volumen para trading
+        
+        **Filtros sugeridos:**
+        - RSI: 50-70
+        - Distancia desde máximo 52S: < 10%
+        - Volumen Relativo > 1.5
+        - Return 1M > 10%
+        - Beta < 2
+        
+        **Resultado esperado:** 50-200 acciones con setup técnico favorable
+        """)
+    
+    st.markdown("---")
+    
+    # ============= LLAMADA A LA ACCIÓN =============
+    st.markdown("""
+    <div style='text-align: center; padding: 40px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(74, 158, 255, 0.1)); 
+                border-radius: 20px; border: 2px solid rgba(74, 158, 255, 0.3);'>
+        <h2 style='color: #4a9eff; margin-bottom: 20px;'>¿Listo para Encontrar tu Próxima Gran Inversión?</h2>
+        <p style='color: #c9d1d9; font-size: 1.2em; margin-bottom: 30px;'>
+            Únete a miles de inversores que ya usan BQuant para tomar mejores decisiones
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Botón centrado para comenzar
+    col1, col2, col3 = st.columns([1.5, 2, 1.5])
+    with col2:
+        if st.button("🚀 **¡COMENZAR ANÁLISIS AHORA!**", 
+                    type="primary", 
+                    use_container_width=True,
+                    help="Haz clic para acceder al screener completo"):
+            st.session_state.app_started = True
+            st.rerun()
+    
+    # Footer con información adicional
+    st.markdown("""
+    <div style='text-align: center; margin-top: 40px; padding: 20px; background: rgba(74, 158, 255, 0.05); 
+                border-radius: 10px;'>
+        <p style='color: #8b949e; font-size: 0.9em;'>
+            Desarrollado por <strong>@Gsnchez</strong> | <strong>bquantfinance.com</strong><br>
+            Datos actualizados: Septiembre 2025 | Sin registro requerido | 100% Gratis
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Inicializar estado de la aplicación
+if 'app_started' not in st.session_state:
+    st.session_state.app_started = False
+
+# Si no ha comenzado, mostrar página de bienvenida y DETENER la ejecución
+if not st.session_state.app_started:
+    show_welcome_page()
+    st.stop()  # <-- Esto detiene la ejecución aquí, no se ejecuta nada más abajo
+
 # =============================================================================
 # DICCIONARIO COMPLETO DE DESCRIPCIONES DE MÉTRICAS (270 métricas)
 # =============================================================================
@@ -1325,533 +1862,6 @@ def create_beautiful_html_table(df):
     '''
     
     return html_table
-
-# Función mejorada para la página de bienvenida
-def show_welcome_page():
-    """
-    Muestra una página de bienvenida mejorada con:
-    - Pie chart de distribución global
-    - Explicación paso a paso clara
-    - Explorador de cobertura de datos interactivo
-    - Ejemplos de uso concretos
-    """
-    
-    # Header principal con gradiente
-    st.markdown("""
-    <div style='text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                border-radius: 20px; margin-bottom: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);'>
-        <h1 style='margin: 0; color: #ffffff; font-size: 2.8em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); margin-bottom: 15px;'>
-            🌍 Bienvenido al BQuant Global Stock Screener
-        </h1>
-        <p style='color: #f0f0f0; margin-top: 15px; font-size: 1.3em; font-weight: 300; line-height: 1.5;'>
-            Tu herramienta profesional para analizar <strong style='color: #ffd700;'>68,000+ acciones</strong> 
-            en <strong style='color: #ffd700;'>89 países</strong> con <strong style='color: #ffd700;'>270+ métricas</strong>
-        </p>
-        <p style='color: #e0e0e0; margin-top: 10px; font-size: 1.1em;'>
-            Encuentra las mejores oportunidades de inversión global con análisis institucional
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Cargar datos para estadísticas
-    with st.spinner("🔄 Cargando base de datos global..."):
-        df_welcome = load_and_preprocess_data()
-    
-    # ============= SECCIÓN 1: ¿QUÉ PUEDES HACER? =============
-    st.markdown("## 🎯 ¿Qué Puedes Hacer con Este Screener?")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown("""
-        <div class="metric-card" style="text-align: center; padding: 20px;">
-            <div style="font-size: 2.5em; margin-bottom: 10px;">🔍</div>
-            <h4 style="color: #4a9eff; margin-bottom: 10px;">Buscar Valor</h4>
-            <p style="font-size: 0.9em; color: #c9d1d9;">
-                Encuentra acciones infravaloradas con P/E bajo, P/B < 1, 
-                alto FCF Yield
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("""
-        <div class="metric-card" style="text-align: center; padding: 20px;">
-            <div style="font-size: 2.5em; margin-bottom: 10px;">🚀</div>
-            <h4 style="color: #4a9eff; margin-bottom: 10px;">Identificar Crecimiento</h4>
-            <p style="font-size: 0.9em; color: #c9d1d9;">
-                Descubre empresas con crecimiento explosivo de ingresos 
-                y beneficios
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown("""
-        <div class="metric-card" style="text-align: center; padding: 20px;">
-            <div style="font-size: 2.5em; margin-bottom: 10px;">💎</div>
-            <h4 style="color: #4a9eff; margin-bottom: 10px;">Analizar Calidad</h4>
-            <p style="font-size: 0.9em; color: #c9d1d9;">
-                Evalúa empresas con ROE alto, márgenes sólidos 
-                y balance fuerte
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown("""
-        <div class="metric-card" style="text-align: center; padding: 20px;">
-            <div style="font-size: 2.5em; margin-bottom: 10px;">🌐</div>
-            <h4 style="color: #4a9eff; margin-bottom: 10px;">Explorar Mercados</h4>
-            <p style="font-size: 0.9em; color: #c9d1d9;">
-                Compara oportunidades en 89 países y mercados 
-                emergentes
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # ============= SECCIÓN 2: DISTRIBUCIÓN GLOBAL (PIE CHART) =============
-    st.markdown("## 🌐 Distribución Global de Acciones")
-    
-    # Preparar datos para el pie chart
-    country_counts = df_welcome['Country'].value_counts()
-    
-    # Agrupar países por regiones para mejor visualización
-    regions = {
-        'Estados Unidos': ['United States', 'US OTC'],
-        'Europa': ['Germany', 'United Kingdom', 'France', 'Netherlands', 'Spain', 'Italy', 
-                   'Belgium', 'Switzerland', 'Sweden', 'Norway', 'Denmark', 'Finland', 
-                   'Ireland', 'Austria', 'Poland', 'Greece', 'Portugal'],
-        'Asia Desarrollada': ['Japan', 'Hong Kong', 'Singapore', 'South Korea', 'Taiwan'],
-        'China': ['China'],
-        'Asia Emergente': ['India', 'Indonesia', 'Thailand', 'Malaysia', 'Philippines', 
-                          'Vietnam', 'Pakistan', 'Bangladesh'],
-        'América Latina': ['Brazil', 'Mexico', 'Argentina', 'Chile', 'Colombia', 'Peru'],
-        'Medio Oriente y África': ['Saudi Arabia', 'United Arab Emirates', 'Israel', 
-                                   'Turkey', 'Egypt', 'South Africa', 'Nigeria', 'Morocco'],
-        'Oceanía': ['Australia', 'New Zealand'],
-        'Otros': []  # Para países no clasificados
-    }
-    
-    # Calcular totales por región
-    region_totals = {}
-    countries_used = set()
-    
-    for region, countries in regions.items():
-        total = 0
-        for country in countries:
-            if country in country_counts.index:
-                total += country_counts[country]
-                countries_used.add(country)
-        if total > 0:
-            region_totals[region] = total
-    
-    # Agregar países no clasificados a "Otros"
-    otros_total = 0
-    for country, count in country_counts.items():
-        if country not in countries_used:
-            otros_total += count
-    if otros_total > 0:
-        region_totals['Otros'] = otros_total
-    
-    # Crear dos columnas para el pie chart y la tabla
-    col1, col2 = st.columns([1.5, 1])
-    
-    with col1:
-        # Crear pie chart interactivo
-        fig = go.Figure(data=[go.Pie(
-            labels=list(region_totals.keys()),
-            values=list(region_totals.values()),
-            hole=0.3,  # Donut chart
-            marker=dict(
-                colors=['#4a9eff', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', 
-                       '#ec4899', '#14b8a6', '#fbbf24', '#6b7280'],
-                line=dict(color='#1a1f2e', width=2)
-            ),
-            textposition='inside',
-            texttemplate='%{label}<br>%{value:,}<br>(%{percent})',
-            hovertemplate='<b>%{label}</b><br>' +
-                         'Acciones: %{value:,}<br>' +
-                         'Porcentaje: %{percent}<br>' +
-                         '<extra></extra>'
-        )])
-        
-        fig.update_layout(
-            title=dict(
-                text='Distribución de Acciones por Región',
-                font=dict(size=20, color='#f0f6fc')
-            ),
-            template='plotly_dark',
-            height=450,
-            showlegend=True,
-            legend=dict(
-                orientation="v",
-                yanchor="middle",
-                y=0.5,
-                xanchor="left",
-                x=1.05
-            ),
-            margin=dict(l=20, r=150, t=60, b=20)
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        st.markdown("### 📊 Resumen por Región")
-        
-        # Crear tabla resumen
-        summary_data = []
-        for region, total in sorted(region_totals.items(), key=lambda x: x[1], reverse=True):
-            percentage = (total / len(df_welcome)) * 100
-            summary_data.append({
-                'Región': region,
-                'Acciones': f'{total:,}',
-                'Porcentaje': f'{percentage:.1f}%'
-            })
-        
-        summary_df = pd.DataFrame(summary_data)
-        
-        # Mostrar como tabla HTML estilizada
-        html_table = f"""
-        <div style="background: rgba(28, 31, 38, 0.8); border-radius: 10px; padding: 15px;">
-            <table style="width: 100%; color: #c9d1d9;">
-                <thead>
-                    <tr style="border-bottom: 2px solid #4a9eff;">
-                        <th style="text-align: left; padding: 8px;">Región</th>
-                        <th style="text-align: right; padding: 8px;">Acciones</th>
-                        <th style="text-align: right; padding: 8px;">%</th>
-                    </tr>
-                </thead>
-                <tbody>
-        """
-        
-        for _, row in summary_df.iterrows():
-            html_table += f"""
-                    <tr style="border-bottom: 1px solid rgba(74, 158, 255, 0.2);">
-                        <td style="padding: 8px; font-weight: 600;">{row['Región']}</td>
-                        <td style="text-align: right; padding: 8px;">{row['Acciones']}</td>
-                        <td style="text-align: right; padding: 8px; color: #4a9eff;">{row['Porcentaje']}</td>
-                    </tr>
-            """
-        
-        html_table += """
-                </tbody>
-            </table>
-        </div>
-        """
-        
-        st.markdown(html_table, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # ============= SECCIÓN 3: CÓMO FUNCIONA =============
-    st.markdown("## 🚀 Cómo Funciona: 3 Pasos Simples")
-    
-    # Crear tabs para cada paso
-    tab1, tab2, tab3 = st.tabs(["1️⃣ Selecciona Estrategia", "2️⃣ Aplica Filtros", "3️⃣ Analiza Resultados"])
-    
-    with tab1:
-        col1, col2 = st.columns([1, 1.5])
-        with col1:
-            st.markdown("""
-            ### Paso 1: Elige tu Estrategia
-            
-            **Opciones disponibles:**
-            - 🎯 **Constructor Personalizado**: Crea tu propia estrategia
-            - 💎 **Valor Profundo**: P/E < 10, P/B < 1
-            - 🚀 **Hipercrecimiento**: Crecimiento > 30%
-            - 💰 **Aristócratas del Dividendo**: 25+ años de aumentos
-            - 🏆 **Calidad Premium**: ROE > 20%, ROIC > 15%
-            - Y 15+ estrategias más...
-            
-            **Tip:** Comienza con una plantilla y ajústala a tus necesidades
-            """)
-        
-        with col2:
-            # Ejemplo visual de selector
-            st.image("https://via.placeholder.com/600x400/4a9eff/ffffff?text=Selector+de+Estrategias", 
-                    caption="Vista del selector de estrategias predefinidas", 
-                    use_container_width=True)
-            st.info("💡 Cada estrategia incluye filtros pre-configurados basados en metodologías probadas de inversión")
-    
-    with tab2:
-        col1, col2 = st.columns([1.5, 1])
-        with col1:
-            st.markdown("""
-            ### Paso 2: Personaliza tus Filtros
-            
-            **Categorías de filtros disponibles:**
-            
-            📊 **Valoración**: P/E, P/B, P/S, EV/EBITDA, PEG  
-            📈 **Crecimiento**: Ingresos, BPA, estimaciones futuras  
-            💎 **Rentabilidad**: ROE, ROA, ROIC, márgenes  
-            🏥 **Salud Financiera**: Liquidez, deuda, Z-Score  
-            💵 **Dividendos**: Yield, payout, historial  
-            📉 **Técnico**: RSI, retornos, momentum  
-            🌍 **Geografía**: 89 países, regiones, mercados  
-            
-            **Ejemplo de filtro combinado:**
-            - P/E < 15 AND ROE > 15% AND Deuda/Equity < 1
-            """)
-        
-        with col2:
-            st.metric("Total de Filtros", "270+", "Métricas profesionales")
-            st.metric("Países", "89", "Mercados globales")
-            st.metric("Combinaciones", "∞", "Posibilidades infinitas")
-            
-            st.success("✅ Los filtros se aplican en tiempo real sobre toda la base de datos")
-    
-    with tab3:
-        st.markdown("""
-        ### Paso 3: Explora y Exporta Resultados
-        
-        Una vez aplicados los filtros, obtendrás:
-        """)
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("""
-            **📊 Tabla Interactiva**
-            - Ordena por cualquier columna
-            - Selecciona métricas a mostrar
-            - Vista personalizable
-            """)
-        
-        with col2:
-            st.markdown("""
-            **📈 Visualizaciones**
-            - Gráficos de dispersión
-            - Análisis por sector/país
-            - Correlaciones y heatmaps
-            """)
-        
-        with col3:
-            st.markdown("""
-            **💾 Exportación**
-            - CSV para Excel
-            - JSON para APIs
-            - Reportes ejecutivos
-            """)
-    
-    st.markdown("---")
-    
-    # ============= SECCIÓN 4: EXPLORADOR DE COBERTURA =============
-    st.markdown("## 🔍 Explorador de Cobertura de Datos por País")
-    
-    st.info("""
-    ⚠️ **Importante**: La profundidad de datos varía significativamente entre países. 
-    USA y mercados desarrollados tienen cobertura completa, mientras que mercados emergentes pueden tener datos limitados.
-    Usa este explorador para entender qué filtros funcionarán mejor en cada mercado.
-    """)
-    
-    # Selector de país con preview
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        # Top 20 países por número de acciones
-        top_countries = country_counts.head(20)
-        selected_country = st.selectbox(
-            "🌍 Selecciona un país para analizar:",
-            options=top_countries.index.tolist(),
-            format_func=lambda x: f"{x} ({country_counts[x]:,} acciones)"
-        )
-        
-        if selected_country:
-            country_df = df_welcome[df_welcome['Country'] == selected_country]
-            
-            # Métricas del país seleccionado
-            st.metric("Total Acciones", f"{len(country_df):,}")
-            st.metric("Sectores", f"{country_df['Sector'].nunique() if 'Sector' in country_df.columns else 0}")
-            
-            # Cap. de mercado total
-            total_mcap = country_df['Market Cap'].sum() if 'Market Cap' in country_df.columns else 0
-            st.metric("Cap. Total", format_number(total_mcap, prefix="$"))
-    
-    with col2:
-        if selected_country:
-            # Análisis de cobertura de datos
-            st.markdown(f"### 📊 Cobertura de Datos: **{selected_country}**")
-            
-            # Categorías de métricas a evaluar
-            metric_categories = {
-                "Valoración Fundamental": ['PE Ratio', 'PB Ratio', 'PS Ratio', 'PEG Ratio', 'EV/EBITDA'],
-                "Rentabilidad": ['ROE', 'ROA', 'ROIC', 'Profit Margin', 'Gross Margin'],
-                "Crecimiento": ['Rev. Growth', 'EPS Growth', 'Rev Gr. Next Y', 'EPS Gr. Next Y'],
-                "Salud Financiera": ['Current Ratio', 'Debt / Equity', 'Z-Score', 'FCF'],
-                "Dividendos": ['Div. Yield', 'Payout Ratio', 'Years', 'Div. Growth'],
-                "Técnico": ['RSI', 'Beta (5Y)', 'Return 1Y', 'Rel. Volume'],
-                "Estimaciones": ['Forward PE', 'Analysts', 'PT Upside', 'Rating']
-            }
-            
-            # Calcular cobertura para cada categoría
-            coverage_results = []
-            for category, metrics in metric_categories.items():
-                available_metrics = [m for m in metrics if m in country_df.columns]
-                if available_metrics:
-                    # Calcular porcentaje de empresas con datos en esta categoría
-                    has_data = country_df[available_metrics].notna().any(axis=1)
-                    coverage_pct = (has_data.sum() / len(country_df) * 100) if len(country_df) > 0 else 0
-                else:
-                    coverage_pct = 0
-                
-                coverage_results.append({
-                    'Categoría': category,
-                    'Cobertura': coverage_pct,
-                    'Calidad': '🟢 Excelente' if coverage_pct >= 80 else 
-                              '🟡 Buena' if coverage_pct >= 50 else 
-                              '🟠 Limitada' if coverage_pct >= 20 else 
-                              '🔴 Muy Limitada'
-                })
-            
-            # Crear DataFrame de resultados
-            coverage_df = pd.DataFrame(coverage_results)
-            
-            # Mostrar como barras de progreso
-            for _, row in coverage_df.iterrows():
-                col_a, col_b = st.columns([1, 3])
-                with col_a:
-                    st.markdown(f"**{row['Categoría']}**")
-                with col_b:
-                    # Crear barra de progreso visual
-                    progress_color = '#10b981' if row['Cobertura'] >= 80 else '#f59e0b' if row['Cobertura'] >= 50 else '#ef4444'
-                    st.markdown(f"""
-                    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 25px; position: relative;">
-                        <div style="background: {progress_color}; width: {row['Cobertura']:.0f}%; height: 100%; 
-                                   border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                            <span style="color: white; font-weight: bold; font-size: 12px;">
-                                {row['Cobertura']:.0f}% {row['Calidad']}
-                            </span>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-            # Recomendación basada en cobertura
-            avg_coverage = coverage_df['Cobertura'].mean()
-            
-            if avg_coverage >= 70:
-                st.success(f"""
-                ✅ **{selected_country}** tiene EXCELENTE cobertura de datos. 
-                Puedes usar cualquier combinación de filtros con confianza.
-                """)
-            elif avg_coverage >= 40:
-                st.warning(f"""
-                ⚠️ **{selected_country}** tiene cobertura MODERADA. 
-                Enfócate en métricas básicas (P/E, P/B, ROE, Crecimiento).
-                """)
-            else:
-                st.error(f"""
-                🔴 **{selected_country}** tiene cobertura LIMITADA. 
-                Usa principalmente filtros de precio y capitalización.
-                """)
-    
-    st.markdown("---")
-    
-    # ============= SECCIÓN 5: CASOS DE USO =============
-    st.markdown("## 💡 Casos de Uso y Ejemplos")
-    
-    example_tabs = st.tabs(["Para Inversores Valor", "Para Growth", "Para Dividendos", "Para Trading"])
-    
-    with example_tabs[0]:
-        st.markdown("""
-        ### 🎯 Inversor de Valor Buscando Gangas
-        
-        **Objetivo:** Encontrar empresas sólidas cotizando por debajo de su valor intrínseco
-        
-        **Filtros sugeridos:**
-        - P/E < 15
-        - P/B < 1.5
-        - FCF Yield > 5%
-        - Debt/Equity < 1
-        - ROE > 10%
-        - Current Ratio > 1.5
-        
-        **Resultado esperado:** 200-500 empresas globales infravaloradas con fundamentos sólidos
-        """)
-    
-    with example_tabs[1]:
-        st.markdown("""
-        ### 🚀 Inversor Growth Buscando el Próximo 10-Bagger
-        
-        **Objetivo:** Identificar empresas con crecimiento explosivo y potencial disruptivo
-        
-        **Filtros sugeridos:**
-        - Crecimiento Ingresos > 30%
-        - Crecimiento BPA > 25%
-        - Margen Bruto > 60%
-        - Insider Ownership > 10%
-        - Momentum (Return 3M) > 15%
-        
-        **Resultado esperado:** 100-300 empresas de hipercrecimiento con momentum positivo
-        """)
-    
-    with example_tabs[2]:
-        st.markdown("""
-        ### 💰 Inversor de Dividendos Buscando Ingresos Pasivos
-        
-        **Objetivo:** Construir cartera de dividendos crecientes y sostenibles
-        
-        **Filtros sugeridos:**
-        - Dividend Yield: 3% - 7%
-        - Años consecutivos aumentando: > 10
-        - Payout Ratio < 70%
-        - Z-Score > 3
-        - Free Cash Flow > 0
-        
-        **Resultado esperado:** 150-400 empresas con dividendos seguros y crecientes
-        """)
-    
-    with example_tabs[3]:
-        st.markdown("""
-        ### 📈 Trader Buscando Oportunidades de Momentum
-        
-        **Objetivo:** Encontrar acciones con fuerte momentum y volumen para trading
-        
-        **Filtros sugeridos:**
-        - RSI: 50-70
-        - Distancia desde máximo 52S: < 10%
-        - Volumen Relativo > 1.5
-        - Return 1M > 10%
-        - Beta < 2
-        
-        **Resultado esperado:** 50-200 acciones con setup técnico favorable
-        """)
-    
-    st.markdown("---")
-    
-    # ============= LLAMADA A LA ACCIÓN =============
-    st.markdown("""
-    <div style='text-align: center; padding: 40px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(74, 158, 255, 0.1)); 
-                border-radius: 20px; border: 2px solid rgba(74, 158, 255, 0.3);'>
-        <h2 style='color: #4a9eff; margin-bottom: 20px;'>¿Listo para Encontrar tu Próxima Gran Inversión?</h2>
-        <p style='color: #c9d1d9; font-size: 1.2em; margin-bottom: 30px;'>
-            Únete a miles de inversores que ya usan BQuant para tomar mejores decisiones
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Botón centrado para comenzar
-    col1, col2, col3 = st.columns([1.5, 2, 1.5])
-    with col2:
-        if st.button("🚀 **¡COMENZAR ANÁLISIS AHORA!**", 
-                    type="primary", 
-                    use_container_width=True,
-                    help="Haz clic para acceder al screener completo"):
-            st.session_state.app_started = True
-            st.rerun()
-    
-    # Footer con información adicional
-    st.markdown("""
-    <div style='text-align: center; margin-top: 40px; padding: 20px; background: rgba(74, 158, 255, 0.05); 
-                border-radius: 10px;'>
-        <p style='color: #8b949e; font-size: 0.9em;'>
-            Desarrollado por <strong>@Gsnchez</strong> | <strong>bquantfinance.com</strong><br>
-            Datos actualizados: Septiembre 2025 | Sin registro requerido | 100% Gratis
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
 
 # =============================================================================
 # HEADER PRINCIPAL
