@@ -4835,7 +4835,6 @@ if st.session_state.filters_applied:
                     """, unsafe_allow_html=True)
                 
                 with col2:
-                    # Selector de columnas para exportar
                     export_columns = st.multiselect(
                         "Seleccionar columnas para exportar (dejar vacío para todas):",
                         options=list(filtered_df.columns),
@@ -4848,124 +4847,110 @@ if st.session_state.filters_applied:
                 else:
                     export_df = filtered_df
                 
-                # Botones de exportación
+                # Botones de exportación - REGENERATE FILES EACH TIME
                 col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
-                    csv = export_df.to_csv(index=False).encode('utf-8')
+                    # CSV - Generate fresh each time
+                    @st.cache_data
+                    def convert_df_to_csv(df):
+                        return df.to_csv(index=False).encode('utf-8')
+                    
+                    csv_data = convert_df_to_csv(export_df)
                     st.download_button(
                         label="📄 Descargar CSV",
-                        data=csv,
-                        file_name=f"bquant_screener_{st.session_state.selected_screener.replace(' ', '_')}_{date.today().isoformat()}.csv",
+                        data=csv_data,
+                        file_name=f"bquant_screener_{date.today().isoformat()}.csv",
                         mime="text/csv",
                         use_container_width=True,
                         help="Formato compatible con Excel y análisis de datos"
                     )
                 
                 with col2:
-                    buffer = io.BytesIO()
-                    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                        export_df.to_excel(writer, sheet_name='Resultados', index=False)
-                        
-                        # Agregar hoja de resumen
-                        summary_data = {
-                            'Métrica': ['Total Acciones', 'Países', 'Sectores', 'Cap. Mercado Total',
-                                    'P/E Mediano', 'ROE Promedio', 'Score Promedio'],
-                            'Valor': [
-                                len(filtered_df),
-                                filtered_df['Country'].nunique() if 'Country' in filtered_df.columns else 0,
-                                filtered_df['Sector'].nunique() if 'Sector' in filtered_df.columns else 0,
-                                format_number(filtered_df['Market Cap'].sum() if 'Market Cap' in filtered_df.columns else 0, prefix='$'),
-                                f"{filtered_df['PE Ratio'].median():.1f}" if 'PE Ratio' in filtered_df.columns else 'N/D',
-                                f"{filtered_df['ROE'].mean():.1f}%" if 'ROE' in filtered_df.columns else 'N/D',
-                                f"{filtered_df['Master_Score'].mean():.0f}" if 'Master_Score' in filtered_df.columns else 'N/D'
-                            ]
-                        }
-                        pd.DataFrame(summary_data).to_excel(writer, sheet_name='Resumen', index=False)
+                    # Excel - Generate fresh each time
+                    @st.cache_data
+                    def convert_df_to_excel(df, summary_df):
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                            df.to_excel(writer, sheet_name='Resultados', index=False)
+                            summary_df.to_excel(writer, sheet_name='Resumen', index=False)
+                        return output.getvalue()
                     
+                    # Create summary data
+                    summary_data = pd.DataFrame({
+                        'Métrica': ['Total Acciones', 'Países', 'Sectores', 'Cap. Mercado Total',
+                                   'P/E Mediano', 'ROE Promedio', 'Score Promedio'],
+                        'Valor': [
+                            len(filtered_df),
+                            filtered_df['Country'].nunique() if 'Country' in filtered_df.columns else 0,
+                            filtered_df['Sector'].nunique() if 'Sector' in filtered_df.columns else 0,
+                            format_number(filtered_df['Market Cap'].sum() if 'Market Cap' in filtered_df.columns else 0, prefix='$'),
+                            f"{filtered_df['PE Ratio'].median():.1f}" if 'PE Ratio' in filtered_df.columns and not filtered_df['PE Ratio'].isna().all() else 'N/D',
+                            f"{filtered_df['ROE'].mean():.1f}%" if 'ROE' in filtered_df.columns and not filtered_df['ROE'].isna().all() else 'N/D',
+                            f"{filtered_df['Master_Score'].mean():.0f}" if 'Master_Score' in filtered_df.columns and not filtered_df['Master_Score'].isna().all() else 'N/D'
+                        ]
+                    })
+                    
+                    excel_data = convert_df_to_excel(export_df, summary_data)
                     st.download_button(
                         label="📊 Descargar Excel",
-                        data=buffer.getvalue(),
-                        file_name=f"bquant_screener_{st.session_state.selected_screener.replace(' ', '_')}_{date.today().isoformat()}.xlsx",
+                        data=excel_data,
+                        file_name=f"bquant_screener_{date.today().isoformat()}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True,
                         help="Excel con múltiples hojas y formato"
                     )
                 
                 with col3:
-                    json_str = export_df.to_json(orient='records', indent=2)
+                    # JSON - Generate fresh each time
+                    @st.cache_data
+                    def convert_df_to_json(df):
+                        return df.to_json(orient='records', indent=2)
+                    
+                    json_data = convert_df_to_json(export_df)
                     st.download_button(
                         label="📋 Descargar JSON",
-                        data=json_str,
-                        file_name=f"bquant_screener_{st.session_state.selected_screener.replace(' ', '_')}_{date.today().isoformat()}.json",
+                        data=json_data,
+                        file_name=f"bquant_screener_{date.today().isoformat()}.json",
                         mime="application/json",
                         use_container_width=True,
                         help="Formato para APIs y desarrollo web"
                     )
                 
                 with col4:
-                    # Crear un reporte resumido en texto
-                    report = "BQUANT GLOBAL SCREENER - REPORTE DE RESULTADOS\n"
-                    report += "================================================\n"
-                    report += f"Fecha: {date.today().isoformat()}\n"
-                    report += f"Screener: {st.session_state.selected_screener}\n"
-                    report += "\n"
-                    report += "RESUMEN EJECUTIVO\n"
-                    report += "-----------------\n"
-                    report += f"Total de acciones encontradas: {len(filtered_df):,}\n"
-                    report += f"Países representados: {filtered_df['Country'].nunique() if 'Country' in filtered_df.columns else 0}\n"
-                    report += f"Sectores incluidos: {filtered_df['Sector'].nunique() if 'Sector' in filtered_df.columns else 0}\n"
-                    report += f"Capitalización total: {format_number(filtered_df['Market Cap'].sum() if 'Market Cap' in filtered_df.columns else 0, prefix='$')}\n"
-                    report += "\n"
-                    report += "MÉTRICAS CLAVE\n"
-                    report += "--------------\n"
+                    # Text Report - Generate fresh each time
+                    @st.cache_data
+                    def generate_report(df, screener_name):
+                        report = "BQUANT GLOBAL SCREENER - REPORTE DE RESULTADOS\n"
+                        report += "=" * 50 + "\n"
+                        report += f"Fecha: {date.today().isoformat()}\n"
+                        report += f"Screener: {screener_name}\n\n"
+                        report += "RESUMEN EJECUTIVO\n"
+                        report += "-" * 20 + "\n"
+                        report += f"Total acciones: {len(df):,}\n"
+                        
+                        if 'Country' in df.columns:
+                            report += f"Países: {df['Country'].nunique()}\n"
+                        if 'Sector' in df.columns:
+                            report += f"Sectores: {df['Sector'].nunique()}\n"
+                        if 'Market Cap' in df.columns:
+                            report += f"Cap. Total: {format_number(df['Market Cap'].sum(), prefix='$')}\n"
+                        
+                        report += "\nTOP 10 ACCIONES\n"
+                        report += "-" * 20 + "\n"
+                        
+                        if 'Master_Score' in df.columns and not df['Master_Score'].isna().all():
+                            top10 = df.nlargest(10, 'Master_Score')[['Symbol', 'Company Name', 'Master_Score']]
+                            for _, row in top10.iterrows():
+                                report += f"{row['Symbol']}: {str(row['Company Name'])[:40]} - Score: {row['Master_Score']:.0f}\n"
+                        
+                        return report
                     
-                    # P/E Mediano
-                    if 'PE Ratio' in filtered_df.columns and not filtered_df['PE Ratio'].isna().all():
-                        report += f"P/E Mediano: {filtered_df['PE Ratio'].median():.1f}\n"
-                    else:
-                        report += "P/E Mediano: N/D\n"
-                    
-                    # ROE Promedio
-                    if 'ROE' in filtered_df.columns and not filtered_df['ROE'].isna().all():
-                        report += f"ROE Promedio: {filtered_df['ROE'].mean():.1f}%\n"
-                    else:
-                        report += "ROE Promedio: N/D\n"
-                    
-                    # Crecimiento Ingresos
-                    if 'Rev. Growth' in filtered_df.columns and not filtered_df['Rev. Growth'].isna().all():
-                        report += f"Crecimiento Ingresos Mediano: {filtered_df['Rev. Growth'].median():.1f}%\n"
-                    else:
-                        report += "Crecimiento Ingresos Mediano: N/D\n"
-                    
-                    # Retorno 1 Año
-                    if 'Return 1Y' in filtered_df.columns and not filtered_df['Return 1Y'].isna().all():
-                        report += f"Retorno 1 Año Mediano: {filtered_df['Return 1Y'].median():.1f}%\n"
-                    else:
-                        report += "Retorno 1 Año Mediano: N/D\n"
-                    
-                    # Master Score
-                    if 'Master_Score' in filtered_df.columns and not filtered_df['Master_Score'].isna().all():
-                        report += f"Master Score Promedio: {filtered_df['Master_Score'].mean():.0f}\n"
-                    else:
-                        report += "Master Score Promedio: N/D\n"
-                    
-                    report += "\n"
-                    report += "TOP 10 ACCIONES POR MASTER SCORE\n"
-                    report += "---------------------------------\n"
-                    
-                    if 'Master_Score' in filtered_df.columns and not filtered_df['Master_Score'].isna().all():
-                        top10 = filtered_df.nlargest(10, 'Master_Score')[['Symbol', 'Company Name', 'Master_Score']]
-                        for idx, row in top10.iterrows():
-                            company_name = str(row['Company Name'])[:50]
-                            report += f"{row['Symbol']}: {company_name} - Score: {row['Master_Score']:.0f}\n"
-                    else:
-                        report += "No hay datos de Master Score disponibles\n"
-                    
+                    report_data = generate_report(export_df, st.session_state.get('selected_screener', 'Custom'))
                     st.download_button(
                         label="📝 Descargar Reporte",
-                        data=report,
-                        file_name=f"bquant_reporte_{st.session_state.selected_screener.replace(' ', '_')}_{date.today().isoformat()}.txt",
+                        data=report_data,
+                        file_name=f"bquant_reporte_{date.today().isoformat()}.txt",
                         mime="text/plain",
                         use_container_width=True,
                         help="Reporte ejecutivo en texto plano"
