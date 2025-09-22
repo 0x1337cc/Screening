@@ -608,36 +608,26 @@ def show_welcome_page():
         
         summary_df = pd.DataFrame(summary_data)
         
-        # Mostrar como tabla HTML estilizada
-        html_table = f"""
-        <div style="background: rgba(28, 31, 38, 0.8); border-radius: 10px; padding: 15px;">
-            <table style="width: 100%; color: #c9d1d9;">
-                <thead>
-                    <tr style="border-bottom: 2px solid #4a9eff;">
-                        <th style="text-align: left; padding: 8px;">Región</th>
-                        <th style="text-align: right; padding: 8px;">Acciones</th>
-                        <th style="text-align: right; padding: 8px;">%</th>
-                    </tr>
-                </thead>
-                <tbody>
-        """
-        
-        for _, row in summary_df.iterrows():
-            html_table += f"""
-                    <tr style="border-bottom: 1px solid rgba(74, 158, 255, 0.2);">
-                        <td style="padding: 8px; font-weight: 600;">{row['Región']}</td>
-                        <td style="text-align: right; padding: 8px;">{row['Acciones']}</td>
-                        <td style="text-align: right; padding: 8px; color: #4a9eff;">{row['Porcentaje']}</td>
-                    </tr>
-            """
-        
-        html_table += """
-                </tbody>
-            </table>
-        </div>
-        """
-        
-        st.markdown(html_table, unsafe_allow_html=True)
+        # Mostrar como dataframe estilizado
+        st.dataframe(
+            summary_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Región": st.column_config.TextColumn(
+                    "Región",
+                    width="medium",
+                ),
+                "Acciones": st.column_config.TextColumn(
+                    "Acciones",
+                    width="small",
+                ),
+                "Porcentaje": st.column_config.TextColumn(
+                    "%",
+                    width="small",
+                ),
+            }
+        )
     
     st.markdown("---")
     
@@ -665,10 +655,6 @@ def show_welcome_page():
             """)
         
         with col2:
-            # Ejemplo visual de selector
-            st.image("https://via.placeholder.com/600x400/4a9eff/ffffff?text=Selector+de+Estrategias", 
-                    caption="Vista del selector de estrategias predefinidas", 
-                    use_container_width=True)
             st.info("💡 Cada estrategia incluye filtros pre-configurados basados en metodologías probadas de inversión")
     
     with tab2:
@@ -733,7 +719,7 @@ def show_welcome_page():
     
     st.markdown("---")
     
-    # ============= SECCIÓN 4: EXPLORADOR DE COBERTURA =============
+    # ============= SECCIÓN 4: EXPLORADOR DE COBERTURA (CORREGIDO) =============
     st.markdown("## 🔍 Explorador de Cobertura de Datos por País")
     
     st.info("""
@@ -804,24 +790,41 @@ def show_welcome_page():
             # Crear DataFrame de resultados
             coverage_df = pd.DataFrame(coverage_results)
             
-            # Mostrar como barras de progreso
+            # Mostrar como barras de progreso CORREGIDAS
             for _, row in coverage_df.iterrows():
                 col_a, col_b = st.columns([1, 3])
                 with col_a:
                     st.markdown(f"**{row['Categoría']}**")
                 with col_b:
-                    # Crear barra de progreso visual
+                    # Determinar colores y estilos según cobertura
                     progress_color = '#10b981' if row['Cobertura'] >= 80 else '#f59e0b' if row['Cobertura'] >= 50 else '#ef4444'
-                    st.markdown(f"""
-                    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 25px; position: relative;">
-                        <div style="background: {progress_color}; width: {row['Cobertura']:.0f}%; height: 100%; 
-                                   border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                            <span style="color: white; font-weight: bold; font-size: 12px;">
+                    
+                    # CORRECCIÓN: Para cobertura 0%, mostrar el texto fuera de la barra
+                    if row['Cobertura'] < 5:
+                        # Cuando la barra es muy pequeña, mostrar texto fuera
+                        st.markdown(f"""
+                        <div style="position: relative; background: rgba(255,255,255,0.1); border-radius: 10px; height: 25px;">
+                            <div style="background: {progress_color}; width: {max(row['Cobertura'], 2):.0f}%; height: 100%; 
+                                       border-radius: 10px;">
+                            </div>
+                            <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+                                        color: #c9d1d9; font-weight: bold; font-size: 12px; z-index: 10;">
                                 {row['Cobertura']:.0f}% {row['Calidad']}
                             </span>
                         </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
+                    else:
+                        # Cuando la barra es suficientemente grande, mostrar texto dentro
+                        st.markdown(f"""
+                        <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 25px; position: relative;">
+                            <div style="background: {progress_color}; width: {row['Cobertura']:.0f}%; height: 100%; 
+                                       border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                                <span style="color: white; font-weight: bold; font-size: 12px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">
+                                    {row['Cobertura']:.0f}% {row['Calidad']}
+                                </span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
             
             # Recomendación basada en cobertura
             avg_coverage = coverage_df['Cobertura'].mean()
