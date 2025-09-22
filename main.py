@@ -4420,13 +4420,13 @@ if st.session_state.filters_applied:
                 st.metric("Score Promedio", f"{avg_score:.0f}/100")
             
             # ===== RESULTS TABS =====
+            st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
             result_tabs = st.tabs([
                 "📊 Tabla", "📈 Gráficos", "🏆 Rankings", 
                 "🎯 Análisis Sectorial", "🌍 Análisis por País", 
                 "📐 Correlaciones", "💾 Exportar"
             ])
             
-            st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
             # TAB 1: TABLA
             with result_tabs[0]:
                 st.markdown("### 📊 Resultados del Screening")
