@@ -197,6 +197,230 @@ professional_css = """
 st.markdown(professional_css, unsafe_allow_html=True)
 
 
+# =============================================================================
+# FUNCIONES PRINCIPALES
+# =============================================================================
+
+@st.cache_data(persist="disk", show_spinner=False, ttl=3600)
+def load_and_preprocess_data():
+    try:
+        df = pd.read_csv('all_countries_stocks_20250919_122611.csv', low_memory=False)
+        
+        # Fill missing country values
+        if 'Country' in df.columns:
+            df['Country'] = df['Country'].fillna('Unknown')
+            if 'Country_Original' in df.columns:
+                df.loc[df['Country'] == 'Unknown', 'Country'] = df.loc[df['Country'] == 'Unknown', 'Country_Original']
+        
+        # List of columns that should be numeric
+        numeric_columns = [
+            'PE Ratio', 'Forward PE', 'PB Ratio', 'PS Ratio', 'Forward PS', 'PEG Ratio',
+            'P/FCF', 'P/OCF', 'P/EBITDA', 'P/TBV', 'P/FFO',
+            'EV/Sales', 'EV/EBITDA', 'EV/EBIT', 'EV/FCF', 'EV/Earnings',
+            'FCF Yield', 'Earnings Yield', 'Graham (%)', 'Lynch (%)',
+            'ROE', 'ROA', 'ROIC', 'ROCE', 'ROE (5Y)', 'ROA (5Y)', 'ROIC (5Y)',
+            'Gross Margin', 'Oper. Margin', 'Pretax Margin', 'Profit Margin',
+            'FCF Margin', 'EBITDA Margin', 'EBIT Margin',
+            'Rev. Growth', 'Rev. Growth (Q)', 'Rev. Growth 3Y', 'Rev. Growth 5Y',
+            'EPS Growth', 'EPS Growth (Q)', 'EPS Growth 3Y', 'EPS Growth 5Y',
+            'Current Ratio', 'Quick Ratio', 'Debt / Equity', 'Debt / EBITDA',
+            'Z-Score', 'F-Score', 'FCF', 'Market Cap',
+            'Years', 'Div. Yield', 'Payout Ratio', 'Div. Growth',
+            'RSI', 'RSI (W)', 'RSI (M)', 'Beta (5Y)', 'ATR', 'Rel. Volume',
+            'Return 1W', 'Return 1M', 'Return 3M', 'Return 6M', 'Return YTD',
+            'Return 1Y', 'Return 3Y', 'Return 5Y', 'Return 10Y',
+            'Shares Insiders', 'Shares Institut.', 'Short % Float', 'Short Ratio',
+            '52W High Chg', '52W Low Chg', 'Employees', 'Founded', 'Analysts',
+            'Rev Gr. This Y', 'Rev Gr. Next Y', 'EPS Gr. This Y', 'EPS Gr. Next Y',
+            'Rev Gr. This Q', 'Rev Gr. Next Q', 'EPS Gr. This Q', 'EPS Gr. Next Q'
+        ]
+        
+        # Process columns that might contain percentage signs
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                # Check if column contains percentage values
+                sample = df[col].dropna().head(100).astype(str)
+                if sample.str.contains('%', na=False).any():
+                    # Remove % and convert to float
+                    df[col] = df[col].astype(str).str.replace('%', '', regex=False)
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        # Convert all numeric columns to proper numeric type
+        for col in numeric_columns:
+            if col in df.columns:
+                # Handle special cases
+                if df[col].dtype == 'object':
+                    # Remove any non-numeric characters (except . and -)
+                    df[col] = df[col].astype(str).str.replace('[^0-9.-]', '', regex=True)
+                    # Replace empty strings with NaN
+                    df[col] = df[col].replace('', np.nan)
+                    df[col] = df[col].replace('-', np.nan)
+                    df[col] = df[col].replace('N/A', np.nan)
+                    df[col] = df[col].replace('n/a', np.nan)
+                
+                # Convert to numeric
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        # Handle Market Cap specifically (might have K, M, B suffixes)
+        if 'Market Cap' in df.columns and df['Market Cap'].dtype == 'object':
+            def parse_market_cap_value(val):
+                if pd.isna(val) or val == '':
+                    return np.nan
+                val = str(val).upper().replace(',', '').strip()
+                multipliers = {'K': 1e3, 'M': 1e6, 'B': 1e9, 'T': 1e12}
+                for suffix, mult in multipliers.items():
+                    if val.endswith(suffix):
+                        try:
+                            return float(val[:-1]) * mult
+                        except:
+                            return np.nan
+                try:
+                    return float(val)
+                except:
+                    return np.nan
+            
+            df['Market Cap'] = df['Market Cap'].apply(parse_market_cap_value)
+        
+        # Process date columns
+        date_cols = ['IPO Date', 'Ex-Div Date', 'Payment Date', 'Earnings Date', 
+                     'Last Report Date', 'Next Earnings', 'Last Earnings', 'ATH Date', 'ATL Date',
+                     'Last Stock Split', 'Last Split Date', '10K Date']
+        for col in date_cols:
+            if col in df.columns:
+                df[col] = pd.to_datetime(df[col], errors='coerce')
+        
+        # Create composite metrics
+        df = create_composite_metrics(df)
+        
+        # Final validation: ensure critical numeric columns are numeric
+        critical_numeric = ['PE Ratio', 'PB Ratio', 'ROE', 'Market Cap', 'Rev. Growth', 'Return 1Y']
+        for col in critical_numeric:
+            if col in df.columns and df[col].dtype == 'object':
+                print(f"Warning: {col} still contains non-numeric values after processing")
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        return df
+        
+    except FileNotFoundError:
+        st.error(f"❌ **Archivo no encontrado: all_countries_stocks_20250919_122611.csv**")
+        st.info("Por favor asegúrese de que el archivo CSV esté en el mismo directorio que esta aplicación.")
+        st.stop()
+
+def create_composite_metrics(df):
+    # Score de Calidad
+    df['Quality_Score'] = 0
+    if 'ROE' in df.columns and df['ROE'].notna().any(): 
+        df['Quality_Score'] += np.where(df['ROE'] > df['ROE'].quantile(0.7), 25, 0)
+    if 'ROA' in df.columns and df['ROA'].notna().any(): 
+        df['Quality_Score'] += np.where(df['ROA'] > df['ROA'].quantile(0.7), 25, 0)
+    if 'ROIC' in df.columns and df['ROIC'].notna().any(): 
+        df['Quality_Score'] += np.where(df['ROIC'] > df['ROIC'].quantile(0.7), 25, 0)
+    if 'Profit Margin' in df.columns and df['Profit Margin'].notna().any(): 
+        df['Quality_Score'] += np.where(df['Profit Margin'] > df['Profit Margin'].quantile(0.7), 25, 0)
+    
+    # Score de Valor
+    df['Value_Score'] = 0
+    if 'PE Ratio' in df.columns and df['PE Ratio'].notna().any(): 
+        df['Value_Score'] += np.where((df['PE Ratio'] > 0) & (df['PE Ratio'] < df['PE Ratio'].quantile(0.3)), 25, 0)
+    if 'PB Ratio' in df.columns and df['PB Ratio'].notna().any(): 
+        df['Value_Score'] += np.where(df['PB Ratio'] < df['PB Ratio'].quantile(0.3), 25, 0)
+    if 'PS Ratio' in df.columns and df['PS Ratio'].notna().any(): 
+        df['Value_Score'] += np.where(df['PS Ratio'] < df['PS Ratio'].quantile(0.3), 25, 0)
+    if 'EV/EBITDA' in df.columns and df['EV/EBITDA'].notna().any(): 
+        df['Value_Score'] += np.where((df['EV/EBITDA'] > 0) & (df['EV/EBITDA'] < df['EV/EBITDA'].quantile(0.3)), 25, 0)
+    
+    # Score de Crecimiento  
+    df['Growth_Score'] = 0
+    if 'Rev. Growth' in df.columns and df['Rev. Growth'].notna().any():
+        df['Growth_Score'] += np.where(df['Rev. Growth'] > 20, 25, 0)
+    if 'EPS Growth' in df.columns and df['EPS Growth'].notna().any():
+        df['Growth_Score'] += np.where(df['EPS Growth'] > 20, 25, 0)
+    if 'Rev Gr. Next Y' in df.columns and df['Rev Gr. Next Y'].notna().any(): 
+        df['Growth_Score'] += np.where(df['Rev Gr. Next Y'] > 15, 25, 0)
+    if 'EPS Gr. Next Y' in df.columns and df['EPS Gr. Next Y'].notna().any(): 
+        df['Growth_Score'] += np.where(df['EPS Gr. Next Y'] > 15, 25, 0)
+    
+    # Score de Salud Financiera
+    df['Financial_Health_Score'] = 0
+    if 'Current Ratio' in df.columns and df['Current Ratio'].notna().any(): 
+        df['Financial_Health_Score'] += np.where(df['Current Ratio'] > 1.5, 25, 0)
+    if 'Debt / Equity' in df.columns and df['Debt / Equity'].notna().any(): 
+        df['Financial_Health_Score'] += np.where(df['Debt / Equity'] < 1, 25, 0)
+    if 'Z-Score' in df.columns and df['Z-Score'].notna().any(): 
+        df['Financial_Health_Score'] += np.where(df['Z-Score'] > 3, 25, 0)
+    if 'FCF Yield' in df.columns and df['FCF Yield'].notna().any(): 
+        df['Financial_Health_Score'] += np.where(df['FCF Yield'] > 5, 25, 0)
+    
+    # Score de Momentum
+    df['Momentum_Score'] = 0
+    if 'Return 1Y' in df.columns and df['Return 1Y'].notna().any(): 
+        df['Momentum_Score'] += np.where(df['Return 1Y'] > df['Return 1Y'].quantile(0.7), 30, 0)
+    if 'Return 3M' in df.columns and df['Return 3M'].notna().any(): 
+        df['Momentum_Score'] += np.where(df['Return 3M'] > 0, 20, 0)
+    if 'Return 1M' in df.columns and df['Return 1M'].notna().any(): 
+        df['Momentum_Score'] += np.where(df['Return 1M'] > 0, 20, 0)
+    if 'RSI' in df.columns and df['RSI'].notna().any(): 
+        df['Momentum_Score'] += np.where((df['RSI'] > 50) & (df['RSI'] < 70), 30, 0)
+    
+    # Score Maestro
+    df['Master_Score'] = (df['Quality_Score']*0.3 + df['Value_Score']*0.25 + 
+                          df['Growth_Score']*0.2 + df['Financial_Health_Score']*0.15 + 
+                          df['Momentum_Score']*0.1)
+    return df
+
+def format_number(num, prefix="", suffix="", decimals=2):
+    if pd.isna(num): return "N/D"
+    if abs(num) >= 1e12: return f"{prefix}{num/1e12:.{decimals}f}T{suffix}"
+    elif abs(num) >= 1e9: return f"{prefix}{num/1e9:.{decimals}f}B{suffix}"
+    elif abs(num) >= 1e6: return f"{prefix}{num/1e6:.{decimals}f}M{suffix}"
+    elif abs(num) >= 1e3: return f"{prefix}{num/1e3:.{decimals}f}K{suffix}"
+    else: return f"{prefix}{num:.{decimals}f}{suffix}"
+
+def parse_market_cap(value_str):
+    if not value_str or value_str == "": return None
+    value_str = value_str.upper().replace(',', '').strip()
+    multipliers = {'K': 1e3, 'M': 1e6, 'B': 1e9, 'T': 1e12}
+    for suffix, multiplier in multipliers.items():
+        if value_str.endswith(suffix):
+            try: return float(value_str[:-1]) * multiplier
+            except: return None
+    try: return float(value_str)
+    except: return None
+
+def render_ranking_card(title, emoji, df, score_col, metric_col, metric_label, metric_format, num_results=10):
+    st.markdown(f"#### {emoji} {title}")
+    
+    if score_col not in df.columns or df[score_col].empty:
+        st.caption(f"Sin datos para '{score_col}'.")
+        return
+        
+    sorted_df = df.nlargest(num_results, score_col)
+    
+    if sorted_df.empty:
+        st.caption("Sin resultados en esta categoría.")
+        return
+
+    for _, row in sorted_df.iterrows():
+        score = row[score_col]
+        color = "#10b981" if score >= 75 else "#f59e0b" if score >= 50 else "#ef4444"
+        
+        metric_value = row.get(metric_col, 'N/D')
+        if pd.notna(metric_value) and isinstance(metric_value, (int, float)):
+             metric_display = metric_format.format(metric_value)
+        else:
+             metric_display = "-"
+        
+        symbol = row['Symbol']
+        country = row.get('Country', '')
+        country_display = f" | {country}" if country else ""
+        
+        st.markdown(
+            f"<span style='color: {color}; font-weight: bold;'>{symbol}</span> - Puntuación: {score:.0f}{country_display}",
+            unsafe_allow_html=True
+        )
+        st.caption(f"{row['Company Name'][:35]} | {metric_label}: {metric_display}")
+
+
 # Función mejorada para la página de bienvenida
 def show_welcome_page():
     """
@@ -1208,229 +1432,6 @@ SCREENERS = {
         }
     }
 }
-
-# =============================================================================
-# FUNCIONES PRINCIPALES
-# =============================================================================
-
-@st.cache_data(persist="disk", show_spinner=False, ttl=3600)
-def load_and_preprocess_data():
-    try:
-        df = pd.read_csv('all_countries_stocks_20250919_122611.csv', low_memory=False)
-        
-        # Fill missing country values
-        if 'Country' in df.columns:
-            df['Country'] = df['Country'].fillna('Unknown')
-            if 'Country_Original' in df.columns:
-                df.loc[df['Country'] == 'Unknown', 'Country'] = df.loc[df['Country'] == 'Unknown', 'Country_Original']
-        
-        # List of columns that should be numeric
-        numeric_columns = [
-            'PE Ratio', 'Forward PE', 'PB Ratio', 'PS Ratio', 'Forward PS', 'PEG Ratio',
-            'P/FCF', 'P/OCF', 'P/EBITDA', 'P/TBV', 'P/FFO',
-            'EV/Sales', 'EV/EBITDA', 'EV/EBIT', 'EV/FCF', 'EV/Earnings',
-            'FCF Yield', 'Earnings Yield', 'Graham (%)', 'Lynch (%)',
-            'ROE', 'ROA', 'ROIC', 'ROCE', 'ROE (5Y)', 'ROA (5Y)', 'ROIC (5Y)',
-            'Gross Margin', 'Oper. Margin', 'Pretax Margin', 'Profit Margin',
-            'FCF Margin', 'EBITDA Margin', 'EBIT Margin',
-            'Rev. Growth', 'Rev. Growth (Q)', 'Rev. Growth 3Y', 'Rev. Growth 5Y',
-            'EPS Growth', 'EPS Growth (Q)', 'EPS Growth 3Y', 'EPS Growth 5Y',
-            'Current Ratio', 'Quick Ratio', 'Debt / Equity', 'Debt / EBITDA',
-            'Z-Score', 'F-Score', 'FCF', 'Market Cap',
-            'Years', 'Div. Yield', 'Payout Ratio', 'Div. Growth',
-            'RSI', 'RSI (W)', 'RSI (M)', 'Beta (5Y)', 'ATR', 'Rel. Volume',
-            'Return 1W', 'Return 1M', 'Return 3M', 'Return 6M', 'Return YTD',
-            'Return 1Y', 'Return 3Y', 'Return 5Y', 'Return 10Y',
-            'Shares Insiders', 'Shares Institut.', 'Short % Float', 'Short Ratio',
-            '52W High Chg', '52W Low Chg', 'Employees', 'Founded', 'Analysts',
-            'Rev Gr. This Y', 'Rev Gr. Next Y', 'EPS Gr. This Y', 'EPS Gr. Next Y',
-            'Rev Gr. This Q', 'Rev Gr. Next Q', 'EPS Gr. This Q', 'EPS Gr. Next Q'
-        ]
-        
-        # Process columns that might contain percentage signs
-        for col in df.columns:
-            if df[col].dtype == 'object':
-                # Check if column contains percentage values
-                sample = df[col].dropna().head(100).astype(str)
-                if sample.str.contains('%', na=False).any():
-                    # Remove % and convert to float
-                    df[col] = df[col].astype(str).str.replace('%', '', regex=False)
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
-        
-        # Convert all numeric columns to proper numeric type
-        for col in numeric_columns:
-            if col in df.columns:
-                # Handle special cases
-                if df[col].dtype == 'object':
-                    # Remove any non-numeric characters (except . and -)
-                    df[col] = df[col].astype(str).str.replace('[^0-9.-]', '', regex=True)
-                    # Replace empty strings with NaN
-                    df[col] = df[col].replace('', np.nan)
-                    df[col] = df[col].replace('-', np.nan)
-                    df[col] = df[col].replace('N/A', np.nan)
-                    df[col] = df[col].replace('n/a', np.nan)
-                
-                # Convert to numeric
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        
-        # Handle Market Cap specifically (might have K, M, B suffixes)
-        if 'Market Cap' in df.columns and df['Market Cap'].dtype == 'object':
-            def parse_market_cap_value(val):
-                if pd.isna(val) or val == '':
-                    return np.nan
-                val = str(val).upper().replace(',', '').strip()
-                multipliers = {'K': 1e3, 'M': 1e6, 'B': 1e9, 'T': 1e12}
-                for suffix, mult in multipliers.items():
-                    if val.endswith(suffix):
-                        try:
-                            return float(val[:-1]) * mult
-                        except:
-                            return np.nan
-                try:
-                    return float(val)
-                except:
-                    return np.nan
-            
-            df['Market Cap'] = df['Market Cap'].apply(parse_market_cap_value)
-        
-        # Process date columns
-        date_cols = ['IPO Date', 'Ex-Div Date', 'Payment Date', 'Earnings Date', 
-                     'Last Report Date', 'Next Earnings', 'Last Earnings', 'ATH Date', 'ATL Date',
-                     'Last Stock Split', 'Last Split Date', '10K Date']
-        for col in date_cols:
-            if col in df.columns:
-                df[col] = pd.to_datetime(df[col], errors='coerce')
-        
-        # Create composite metrics
-        df = create_composite_metrics(df)
-        
-        # Final validation: ensure critical numeric columns are numeric
-        critical_numeric = ['PE Ratio', 'PB Ratio', 'ROE', 'Market Cap', 'Rev. Growth', 'Return 1Y']
-        for col in critical_numeric:
-            if col in df.columns and df[col].dtype == 'object':
-                print(f"Warning: {col} still contains non-numeric values after processing")
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        
-        return df
-        
-    except FileNotFoundError:
-        st.error(f"❌ **Archivo no encontrado: all_countries_stocks_20250919_122611.csv**")
-        st.info("Por favor asegúrese de que el archivo CSV esté en el mismo directorio que esta aplicación.")
-        st.stop()
-
-def create_composite_metrics(df):
-    # Score de Calidad
-    df['Quality_Score'] = 0
-    if 'ROE' in df.columns and df['ROE'].notna().any(): 
-        df['Quality_Score'] += np.where(df['ROE'] > df['ROE'].quantile(0.7), 25, 0)
-    if 'ROA' in df.columns and df['ROA'].notna().any(): 
-        df['Quality_Score'] += np.where(df['ROA'] > df['ROA'].quantile(0.7), 25, 0)
-    if 'ROIC' in df.columns and df['ROIC'].notna().any(): 
-        df['Quality_Score'] += np.where(df['ROIC'] > df['ROIC'].quantile(0.7), 25, 0)
-    if 'Profit Margin' in df.columns and df['Profit Margin'].notna().any(): 
-        df['Quality_Score'] += np.where(df['Profit Margin'] > df['Profit Margin'].quantile(0.7), 25, 0)
-    
-    # Score de Valor
-    df['Value_Score'] = 0
-    if 'PE Ratio' in df.columns and df['PE Ratio'].notna().any(): 
-        df['Value_Score'] += np.where((df['PE Ratio'] > 0) & (df['PE Ratio'] < df['PE Ratio'].quantile(0.3)), 25, 0)
-    if 'PB Ratio' in df.columns and df['PB Ratio'].notna().any(): 
-        df['Value_Score'] += np.where(df['PB Ratio'] < df['PB Ratio'].quantile(0.3), 25, 0)
-    if 'PS Ratio' in df.columns and df['PS Ratio'].notna().any(): 
-        df['Value_Score'] += np.where(df['PS Ratio'] < df['PS Ratio'].quantile(0.3), 25, 0)
-    if 'EV/EBITDA' in df.columns and df['EV/EBITDA'].notna().any(): 
-        df['Value_Score'] += np.where((df['EV/EBITDA'] > 0) & (df['EV/EBITDA'] < df['EV/EBITDA'].quantile(0.3)), 25, 0)
-    
-    # Score de Crecimiento  
-    df['Growth_Score'] = 0
-    if 'Rev. Growth' in df.columns and df['Rev. Growth'].notna().any():
-        df['Growth_Score'] += np.where(df['Rev. Growth'] > 20, 25, 0)
-    if 'EPS Growth' in df.columns and df['EPS Growth'].notna().any():
-        df['Growth_Score'] += np.where(df['EPS Growth'] > 20, 25, 0)
-    if 'Rev Gr. Next Y' in df.columns and df['Rev Gr. Next Y'].notna().any(): 
-        df['Growth_Score'] += np.where(df['Rev Gr. Next Y'] > 15, 25, 0)
-    if 'EPS Gr. Next Y' in df.columns and df['EPS Gr. Next Y'].notna().any(): 
-        df['Growth_Score'] += np.where(df['EPS Gr. Next Y'] > 15, 25, 0)
-    
-    # Score de Salud Financiera
-    df['Financial_Health_Score'] = 0
-    if 'Current Ratio' in df.columns and df['Current Ratio'].notna().any(): 
-        df['Financial_Health_Score'] += np.where(df['Current Ratio'] > 1.5, 25, 0)
-    if 'Debt / Equity' in df.columns and df['Debt / Equity'].notna().any(): 
-        df['Financial_Health_Score'] += np.where(df['Debt / Equity'] < 1, 25, 0)
-    if 'Z-Score' in df.columns and df['Z-Score'].notna().any(): 
-        df['Financial_Health_Score'] += np.where(df['Z-Score'] > 3, 25, 0)
-    if 'FCF Yield' in df.columns and df['FCF Yield'].notna().any(): 
-        df['Financial_Health_Score'] += np.where(df['FCF Yield'] > 5, 25, 0)
-    
-    # Score de Momentum
-    df['Momentum_Score'] = 0
-    if 'Return 1Y' in df.columns and df['Return 1Y'].notna().any(): 
-        df['Momentum_Score'] += np.where(df['Return 1Y'] > df['Return 1Y'].quantile(0.7), 30, 0)
-    if 'Return 3M' in df.columns and df['Return 3M'].notna().any(): 
-        df['Momentum_Score'] += np.where(df['Return 3M'] > 0, 20, 0)
-    if 'Return 1M' in df.columns and df['Return 1M'].notna().any(): 
-        df['Momentum_Score'] += np.where(df['Return 1M'] > 0, 20, 0)
-    if 'RSI' in df.columns and df['RSI'].notna().any(): 
-        df['Momentum_Score'] += np.where((df['RSI'] > 50) & (df['RSI'] < 70), 30, 0)
-    
-    # Score Maestro
-    df['Master_Score'] = (df['Quality_Score']*0.3 + df['Value_Score']*0.25 + 
-                          df['Growth_Score']*0.2 + df['Financial_Health_Score']*0.15 + 
-                          df['Momentum_Score']*0.1)
-    return df
-
-def format_number(num, prefix="", suffix="", decimals=2):
-    if pd.isna(num): return "N/D"
-    if abs(num) >= 1e12: return f"{prefix}{num/1e12:.{decimals}f}T{suffix}"
-    elif abs(num) >= 1e9: return f"{prefix}{num/1e9:.{decimals}f}B{suffix}"
-    elif abs(num) >= 1e6: return f"{prefix}{num/1e6:.{decimals}f}M{suffix}"
-    elif abs(num) >= 1e3: return f"{prefix}{num/1e3:.{decimals}f}K{suffix}"
-    else: return f"{prefix}{num:.{decimals}f}{suffix}"
-
-def parse_market_cap(value_str):
-    if not value_str or value_str == "": return None
-    value_str = value_str.upper().replace(',', '').strip()
-    multipliers = {'K': 1e3, 'M': 1e6, 'B': 1e9, 'T': 1e12}
-    for suffix, multiplier in multipliers.items():
-        if value_str.endswith(suffix):
-            try: return float(value_str[:-1]) * multiplier
-            except: return None
-    try: return float(value_str)
-    except: return None
-
-def render_ranking_card(title, emoji, df, score_col, metric_col, metric_label, metric_format, num_results=10):
-    st.markdown(f"#### {emoji} {title}")
-    
-    if score_col not in df.columns or df[score_col].empty:
-        st.caption(f"Sin datos para '{score_col}'.")
-        return
-        
-    sorted_df = df.nlargest(num_results, score_col)
-    
-    if sorted_df.empty:
-        st.caption("Sin resultados en esta categoría.")
-        return
-
-    for _, row in sorted_df.iterrows():
-        score = row[score_col]
-        color = "#10b981" if score >= 75 else "#f59e0b" if score >= 50 else "#ef4444"
-        
-        metric_value = row.get(metric_col, 'N/D')
-        if pd.notna(metric_value) and isinstance(metric_value, (int, float)):
-             metric_display = metric_format.format(metric_value)
-        else:
-             metric_display = "-"
-        
-        symbol = row['Symbol']
-        country = row.get('Country', '')
-        country_display = f" | {country}" if country else ""
-        
-        st.markdown(
-            f"<span style='color: {color}; font-weight: bold;'>{symbol}</span> - Puntuación: {score:.0f}{country_display}",
-            unsafe_allow_html=True
-        )
-        st.caption(f"{row['Company Name'][:35]} | {metric_label}: {metric_display}")
 
 # =============================================================================
 # INICIALIZACIÓN MEJORADA
